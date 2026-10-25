@@ -1,0 +1,57 @@
+[versions]
+# Build & tooling
+agp = "9.4.1"
+kotlin = "2.4.21"
+gradle = "9.8.0"
+android-compileSdk = "37"
+android-minSdk = "24"
+android-targetSdk = "37"
+
+# Compose
+composeMultiplatform = "1.12.1"
+
+# AndroidX
+androidx-activityCompose = "1.12.0"
+
+# Jetbrains / KMP
+jetbrains-lifecycle = "2.11.0"
+
+# Kotlinx
+kotlinxDatetime = "0.8.0"
+kotlinxCoroutines = "1.11.0"
+kotlinxCollectionsImmutable = "0.5.2"
+
+# Persistence
+sqldelight = "2.4.1"
+
+[libraries]
+# Kotlinx
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
+
+# Compose runtime VM (jetbrains, multiplatform)
+jetbrains-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jetbrains-lifecycle" }
+jetbrains-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jetbrains-lifecycle" }
+
+# AndroidX
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+
+# SQLDelight
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+
+# Test
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
