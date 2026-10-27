@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.koinCompiler)
 }
 
 kotlin {
@@ -32,6 +33,9 @@ kotlin {
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
+            // Uygulama modülü @KoinApplication ve modül sınıflarını görsün diye api.
+            api(libs.koin.core)
+            api(libs.koin.annotations)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

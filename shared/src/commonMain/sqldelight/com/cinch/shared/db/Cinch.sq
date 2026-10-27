@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS expense (
     card_id INTEGER,
     note TEXT NOT NULL DEFAULT '',
     raw_text TEXT NOT NULL DEFAULT '',
+    -- Hızlı kayıttan çıkan sade kelimeler, boşlukla ayrılmış (alışkanlık analizi için).
+    tokens TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (card_id) REFERENCES card(id)
 );
 
@@ -39,11 +41,14 @@ CREATE TABLE IF NOT EXISTS budget_config (
 
 -- ───────── expense ─────────
 insertExpense:
-INSERT INTO expense(date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO expense(date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text, tokens)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+lastInsertedRowId:
+SELECT last_insert_rowid();
 
 expensesBetween:
-SELECT * FROM expense WHERE date_epoch_day BETWEEN :from AND :to ORDER BY date_epoch_day;
+SELECT * FROM expense WHERE date_epoch_day BETWEEN :from AND :to ORDER BY date_epoch_day, id;
 
 expensesForCard:
 SELECT * FROM expense WHERE card_id = ?;
@@ -65,6 +70,9 @@ INSERT OR REPLACE INTO category_correction(keyword, category) VALUES (?, ?);
 
 correctionFor:
 SELECT category FROM category_correction WHERE keyword = ?;
+
+allCorrections:
+SELECT * FROM category_correction;
 
 -- ───────── budget ─────────
 upsertBudget:

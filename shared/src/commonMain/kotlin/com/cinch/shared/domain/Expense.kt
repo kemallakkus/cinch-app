@@ -11,6 +11,7 @@ import kotlinx.datetime.LocalDate
  *   sadece bu pay sınıra sayılır. Örn. "yarısı geri geldi" → 0.5.
  * @param cardId harcamanın bağlı olduğu kart; nakit ise null.
  * @param tokens hızlı kayıttan ayrıştırılmış kelimeler (alışkanlık analizi için).
+ * @param rawText kullanıcının yazdığı ham metin (ör. "195 market"); listede gösterilir.
  */
 data class Expense(
     val id: Long = 0,
@@ -21,6 +22,7 @@ data class Expense(
     val cardId: Long? = null,
     val note: String = "",
     val tokens: List<String> = emptyList(),
+    val rawText: String = "",
 ) {
     /** Kullanıcının sınıra sayılan payı. */
     val chargeableAmount: Money get() = grossAmount * chargeableFraction

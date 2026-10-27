@@ -20,6 +20,7 @@ import com.cinch.shared.money.MoneyFormatter
 import com.cinch.shared.parser.QuickEntryParser
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import org.koin.compose.koinInject
 import kotlin.time.Clock
 
 /**
@@ -29,7 +30,8 @@ import kotlin.time.Clock
 @Composable
 fun App() {
     MaterialTheme {
-        val parser = remember { QuickEntryParser() }
+        // Koin'den gelir: kategori düzeltmeleri veritabanında kalıcı.
+        val parser = koinInject<QuickEntryParser>()
         var input by remember { mutableStateOf("195 market") }
         val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
         val parsed = parser.parse(input, today)

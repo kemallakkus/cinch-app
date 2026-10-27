@@ -6,7 +6,7 @@ Kotlin domain çekirdeğinde yaşar. Veritabanı SQLDelight; para biçimi yerel 
 
 ## Durum
 
-İlk iskelet + domain çekirdeği hazır ve test edilmiş durumda (**56 birim testi yeşil**).
+Domain çekirdeği, SQLDelight repository katmanı ve Koin DI hazır (**90 birim testi yeşil**).
 
 ## Modül yapısı
 
@@ -34,6 +34,22 @@ cinch-app/
 | `Reconciler` | Elle girilen güncel borç ile kayıt farkını bulur ("103 ₺ yazmayı unutmuşsun") | `reconcile/` |
 | `CoachRules` | 7 günün yerel bildirimlerini üretir; sessiz saat + günde max 2 + cümle varyasyonu | `coach/` |
 
+## Veri katmanı ve DI (`shared/.../`)
+
+| Bileşen | Sorumluluk | Dosya |
+|---|---|---|
+| `ExpenseRepository` / `CardRepository` / `BudgetRepository` | Arayüzler; tarih aralıkları iki uç dahil, `observe*` Flow döner | `domain/repository/` |
+| `Sql*Repository` | SQLDelight implementasyonları; tarih epoch-day, tutar kuruş saklanır | `data/` |
+| `SqlCorrectionStore` | Kategori düzeltmelerini kalıcı tutar (ilk erişimde belleğe alınır) | `data/` |
+| `ObserveBudgetStatus` | Bütçe + harcamaları izler, `BudgetEngine` ile canlı `BudgetStatus` yayar | `budget/` |
+| `PlanCoachWeek` | Bütçe, son 30 gün ve kart ekstre günlerinden `CoachRules` planını üretir | `coach/` |
+| `DataModule` / `DomainModule` / `PlatformModule` | Koin modülleri (annotation, `@Configuration`) | `di/` |
+
+Koin **annotation tabanlı** ve DSL kullanılmıyor. Modülleri Koin compiler plugin topluyor, KSP gerekmiyor. Giriş noktası
+`composeApp/.../di/CinchKoinApp.kt` (`@KoinApplication`) + `StartKoin.doInitKoin()`. Android'de
+`CinchApplication` önce `initPlatform(context)` çağırır; iOS'ta `iOSApp.init` Koin'i başlatır.
+Eksik bağımlılık derleme anında hata verir (compile safety).
+
 ## Çalıştırma
 
 ```bash
@@ -49,13 +65,15 @@ cinch-app/
 
 ## Araç sürümleri
 
-Kotlin 2.4.21 · AGP 9.4.1 · Compose Multiplatform 1.12.1 · Gradle 9.8.0 · SQLDelight 2.4.1
+Kotlin 2.4.21 · AGP 9.4.1 · Compose Multiplatform 1.12.1 · Gradle 9.8.0 · SQLDelight 2.4.1 ·
+Koin 4.2.2 (compiler plugin 1.2.1)
 (`gradle/libs.versions.toml`)
 
 ## Sonraki adımlar
 
-- UI ekranları + navigasyon + DI (Koin)
-- SQLDelight repository katmanı ve `BudgetEngine`/`CoachRules` ile bağlama
+- UI ekranları + navigasyon (ViewModel'ler `@KoinViewModel` ile)
+- Veritabanı migration'ları (ilk sürüm yayınlanmadan önce; şema şu an `CREATE TABLE IF NOT EXISTS`)
+- Maaş günü ayarı (`PlanCoachWeek` şimdilik boş liste veriyor)
 - Yerel bildirim planlayıcı (Android `WorkManager` / iOS `UNUserNotificationCenter`)
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - Opsiyonel cihaz içi OCR fiş okuma (ML Kit / Apple Vision)

@@ -18,6 +18,7 @@ class DatabaseTest {
             card_id = null,
             note = "",
             raw_text = "195 market",
+            tokens = "market",
         )
         val rows = db.cinchQueries.expensesBetween(from = 19999, to = 20001).executeAsList()
         assertEquals(1, rows.size)

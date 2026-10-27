@@ -3,6 +3,7 @@ package com.cinch.shared.parser
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.TextNormalizer
 import com.cinch.shared.domain.Category
+import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.datetime.DatePeriod
@@ -28,6 +29,21 @@ data class ParsedEntry(
 ) {
     val chargeableAmount: Money?
         get() = grossAmount?.times(chargeableFraction)
+
+    /** Kaydedilecek harcamaya çevirir. Tutar bulunamadıysa null (kaydedilecek bir şey yok). */
+    fun toExpense(cardId: Long? = null, note: String = ""): Expense? {
+        val amount = grossAmount ?: return null
+        return Expense(
+            date = date,
+            grossAmount = amount,
+            chargeableFraction = chargeableFraction,
+            category = category,
+            cardId = cardId,
+            note = note,
+            tokens = tokens,
+            rawText = rawText,
+        )
+    }
 }
 
 /**

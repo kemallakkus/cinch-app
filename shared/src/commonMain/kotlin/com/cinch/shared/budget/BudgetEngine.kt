@@ -5,10 +5,12 @@ import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.minusDays
 import com.cinch.shared.parser.plusDays
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 
 /**
  * Haftalık bütçe yapılandırması.
@@ -104,5 +106,17 @@ class BudgetEngine {
         /** [from]..[to] arası gün sayısı (ikisi dahil). */
         fun daysBetweenInclusive(from: LocalDate, to: LocalDate): Int =
             from.daysUntil(to) + 1
+
+        /**
+         * [status] için gereken harcamaların tarih aralığı: bu hafta + bu ay.
+         * Hafta ay sınırını aşabildiği için ikisinin birleşimi alınır.
+         */
+        fun statusRange(today: LocalDate, weekStart: DayOfWeek): ClosedRange<LocalDate> {
+            val weekFirst = startOfWeek(today, weekStart)
+            val weekLast = weekFirst.plusDays(6)
+            val monthFirst = LocalDate(today.year, today.month, 1)
+            val monthLast = monthFirst.plus(DatePeriod(months = 1)).minusDays(1)
+            return minOf(weekFirst, monthFirst)..maxOf(weekLast, monthLast)
+        }
     }
 }
