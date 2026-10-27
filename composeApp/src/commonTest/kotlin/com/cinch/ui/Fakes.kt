@@ -4,7 +4,9 @@ import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
-import com.cinch.ui.common.TodayProvider
+import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.repository.CardRepository
+import com.cinch.shared.time.LocalClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +17,8 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 
 /** Bellek içi depolar: ViewModel testleri platform veritabanı sürücüsü olmadan koşar. */
 class FakeBudgetRepository(initial: BudgetConfig? = null) : BudgetRepository {
@@ -49,8 +53,19 @@ class FakeExpenseRepository : ExpenseRepository {
     }
 }
 
-class FakeToday(var date: LocalDate) : TodayProvider {
-    override fun today(): LocalDate = date
+class FakeCardRepository : CardRepository {
+    val all = MutableStateFlow<List<Card>>(emptyList())
+    override fun observeAll(): Flow<List<Card>> = all
+    override suspend fun all(): List<Card> = all.value
+    override suspend fun add(card: Card): Long {
+        val id = all.value.size + 1L
+        all.update { it + card.copy(id = id) }
+        return id
+    }
+}
+
+class FakeClock(var date: LocalDate, var time: LocalTime = LocalTime(12, 0)) : LocalClock {
+    override fun now(): LocalDateTime = LocalDateTime(date, time)
 }
 
 /**

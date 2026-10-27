@@ -50,6 +50,7 @@ fun HomeScreen(
     onEvent: (HomeEvent) -> Unit,
     snackbarHostState: SnackbarHostState,
     onOpenBudget: () -> Unit,
+    prompt: @Composable () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -73,7 +74,13 @@ fun HomeScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            state.status?.let { status -> item(key = "status") { StatusCard(status) } }
+            item(key = "status") {
+                // Kart boşsa (izin var ya da ertelendi) yer kaplamaz.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.status?.let { StatusCard(it) }
+                    prompt()
+                }
+            }
 
             item(key = "header") {
                 Text(

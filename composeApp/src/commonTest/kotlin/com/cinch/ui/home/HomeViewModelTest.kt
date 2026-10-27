@@ -14,7 +14,7 @@ import com.cinch.shared.money.Money
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.ui.FakeBudgetRepository
 import com.cinch.ui.FakeExpenseRepository
-import com.cinch.ui.FakeToday
+import com.cinch.ui.FakeClock
 import androidx.lifecycle.viewModelScope
 import com.cinch.ui.withTestMain
 import kotlinx.coroutines.cancel
@@ -43,7 +43,7 @@ class HomeViewModelTest {
         val vm: HomeViewModel,
         val budgets: FakeBudgetRepository,
         val expenses: FakeExpenseRepository,
-        val today: FakeToday,
+        val today: FakeClock,
     ) {
         val state get() = vm.state.value
     }
@@ -56,7 +56,7 @@ class HomeViewModelTest {
         runTest {
             val budgets = FakeBudgetRepository(budget)
             val expenses = FakeExpenseRepository()
-            val clock = FakeToday(today)
+            val clock = FakeClock(today)
             val categorizer = Categorizer(corrections = InMemoryCorrectionStore())
             val vm = HomeViewModel(
                 budgets = budgets,
@@ -64,7 +64,7 @@ class HomeViewModelTest {
                 observeBudgetStatus = ObserveBudgetStatus(budgets, expenses, BudgetEngine()),
                 parser = QuickEntryParser(categorizer),
                 categorizer = categorizer,
-                todayProvider = clock,
+                clock = clock,
                 ioDispatcher = StandardTestDispatcher(testScheduler),
             )
             backgroundScope.launch { vm.state.collect {} }

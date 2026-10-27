@@ -1,6 +1,8 @@
 package com.cinch.shared.di
 
 import com.cinch.shared.db.DatabaseDriverFactory
+import com.cinch.shared.prefs.KeyValueStore
+import com.cinch.shared.prefs.UserDefaultsStore
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
@@ -11,4 +13,7 @@ class PlatformModule {
 
     @Single
     fun databaseDriverFactory(): DatabaseDriverFactory = DatabaseDriverFactory()
+
+    @Single
+    fun keyValueStore(): KeyValueStore = UserDefaultsStore()
 }

@@ -19,6 +19,10 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
         // ViewModel testleri commonTest'te; JVM üzerinde androidHostTest olarak koşar.
         withHostTest {}
+        // Bildirimin küçük ikonu (res/drawable) için.
+        androidResources {
+            enable = true
+        }
     }
 
     // iosX64 yok (bkz. shared/build.gradle.kts notu).
@@ -48,6 +52,8 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core)
+            implementation(libs.androidx.work.runtime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

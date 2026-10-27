@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cinch.ui.notifications.NotificationPromptWrapper
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -49,5 +50,6 @@ fun HomeWrapper(
         onEvent = viewModel::onEvent,
         snackbarHostState = snackbarHostState,
         onOpenBudget = onOpenBudget,
+        prompt = { NotificationPromptWrapper() },
     )
 }

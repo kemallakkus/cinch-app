@@ -11,7 +11,7 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.parser.QuickEntryParser
-import com.cinch.ui.common.TodayProvider
+import com.cinch.shared.time.LocalClock
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -46,11 +46,11 @@ class HomeViewModel(
     observeBudgetStatus: ObserveBudgetStatus,
     private val parser: QuickEntryParser,
     private val categorizer: Categorizer,
-    private val todayProvider: TodayProvider,
+    private val clock: LocalClock,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    private val today = MutableStateFlow(todayProvider.today())
+    private val today = MutableStateFlow(clock.today())
     private val _state = MutableStateFlow(HomeState(today = today.value))
 
     private val weekExpenses: Flow<List<Expense>> = today.flatMapLatest { day ->
@@ -92,7 +92,7 @@ class HomeViewModel(
 
     fun onEvent(event: HomeEvent) {
         when (event) {
-            HomeEvent.Resumed -> today.value = todayProvider.today()
+            HomeEvent.Resumed -> today.value = clock.today()
             is HomeEvent.CategoryPicked -> _state.update { it.copy(categoryOverride = event.category) }
             HomeEvent.SaveEntry -> saveEntry()
             is HomeEvent.DeleteExpense -> delete(event.expense)

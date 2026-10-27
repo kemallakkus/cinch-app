@@ -3,6 +3,8 @@ package com.cinch.shared.di
 import android.annotation.SuppressLint
 import android.content.Context
 import com.cinch.shared.db.DatabaseDriverFactory
+import com.cinch.shared.prefs.KeyValueStore
+import com.cinch.shared.prefs.SharedPreferencesStore
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Single
@@ -22,4 +24,11 @@ class PlatformModule {
 
     @Single
     fun databaseDriverFactory(): DatabaseDriverFactory = DatabaseDriverFactory(appContext)
+
+    /** Uygulama katmanının Android bileşenleri (bildirim, WorkManager) için. */
+    @Single
+    fun appContext(): Context = appContext
+
+    @Single
+    fun keyValueStore(): KeyValueStore = SharedPreferencesStore(appContext)
 }

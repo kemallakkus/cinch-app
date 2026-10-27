@@ -5,12 +5,15 @@ import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.CorrectionStore
 import com.cinch.shared.category.KeywordDictionary
+import com.cinch.shared.coach.CoachNotificationPlanner
 import com.cinch.shared.coach.CoachRules
 import com.cinch.shared.coach.PlanCoachWeek
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.time.LocalClock
+import com.cinch.shared.time.SystemLocalClock
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Module
@@ -20,6 +23,9 @@ import org.koin.core.annotation.Single
 @Module
 @Configuration
 class DomainModule {
+
+    @Single
+    fun localClock(): LocalClock = SystemLocalClock
 
     @Single
     fun keywordDictionary(): KeywordDictionary = KeywordDictionary.turkishDefault()
@@ -53,4 +59,8 @@ class DomainModule {
         engine: BudgetEngine,
         rules: CoachRules,
     ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, engine, rules)
+
+    @Factory
+    fun coachNotificationPlanner(plan: PlanCoachWeek, clock: LocalClock): CoachNotificationPlanner =
+        CoachNotificationPlanner(plan, clock)
 }

@@ -6,9 +6,8 @@ import com.cinch.shared.category.Categorizer
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.time.LocalClock
 import com.cinch.ui.budget.BudgetSetupViewModel
-import com.cinch.ui.common.SystemTodayProvider
-import com.cinch.ui.common.TodayProvider
 import com.cinch.ui.home.HomeViewModel
 import com.cinch.ui.root.RootViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -17,15 +16,11 @@ import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Named
-import org.koin.core.annotation.Single
 
 /** Ekranların ViewModel'leri ve yalnız UI'ın ihtiyaç duyduğu bağımlılıklar. */
 @Module
 @Configuration
 class UiModule {
-
-    @Single
-    fun todayProvider(): TodayProvider = SystemTodayProvider
 
     @KoinViewModel
     fun rootViewModel(budgets: BudgetRepository): RootViewModel = RootViewModel(budgets)
@@ -43,7 +38,7 @@ class UiModule {
         observeBudgetStatus: ObserveBudgetStatus,
         parser: QuickEntryParser,
         categorizer: Categorizer,
-        todayProvider: TodayProvider,
+        clock: LocalClock,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
     ): HomeViewModel = HomeViewModel(
         budgets = budgets,
@@ -51,7 +46,7 @@ class UiModule {
         observeBudgetStatus = observeBudgetStatus,
         parser = parser,
         categorizer = categorizer,
-        todayProvider = todayProvider,
+        clock = clock,
         ioDispatcher = ioDispatcher,
     )
 }

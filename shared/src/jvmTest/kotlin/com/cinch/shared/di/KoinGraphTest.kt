@@ -3,6 +3,7 @@ package com.cinch.shared.di
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.category.CorrectionStore
+import com.cinch.shared.coach.CoachNotificationPlanner
 import com.cinch.shared.coach.NotificationType
 import com.cinch.shared.coach.PlanCoachWeek
 import com.cinch.shared.data.SqlCorrectionStore
@@ -11,6 +12,8 @@ import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.prefs.KeyValueStore
+import com.cinch.shared.time.LocalClock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -42,6 +45,9 @@ class KoinGraphTest {
         koin.get<ObserveBudgetStatus>()
         koin.get<PlanCoachWeek>()
         koin.get<QuickEntryParser>()
+        koin.get<CoachNotificationPlanner>()
+        koin.get<LocalClock>()
+        koin.get<KeyValueStore>()
         assertIs<SqlCorrectionStore>(koin.get<CorrectionStore>())
         assertSame(koin.get<ExpenseRepository>(), koin.get<ExpenseRepository>())
     }
