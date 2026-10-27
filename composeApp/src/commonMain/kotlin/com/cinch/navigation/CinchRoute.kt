@@ -37,3 +37,7 @@ data object SettingsRoute : CinchRoute
 /** @param incomeId düzenlenecek gelir; null ise yeni gelir. */
 @Serializable
 data class IncomeEditRoute(val incomeId: Long? = null) : CinchRoute
+
+/** @param fixedId düzenlenecek sabit gider; null ise yeni. */
+@Serializable
+data class FixedEditRoute(val fixedId: Long? = null) : CinchRoute

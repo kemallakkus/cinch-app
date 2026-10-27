@@ -32,8 +32,8 @@ class MigrationTest {
     }
 
     @Test
-    fun schemaVersionIsTwo() {
-        assertEquals(2L, CinchDatabase.Schema.version)
+    fun schemaVersionIsThree() {
+        assertEquals(3L, CinchDatabase.Schema.version)
     }
 
     @Test
@@ -58,5 +58,36 @@ class MigrationTest {
         CinchDatabase.Schema.migrate(driver, 1, 2)
 
         assertTrue(CinchDatabase(driver).cinchQueries.allIncomes().executeAsList().isEmpty())
+    }
+
+    /** Sürüm 2'deki harcama tablosu (sabit gider bağlantısı yok). */
+    private val v2ExpenseTable = """
+        CREATE TABLE expense (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date_epoch_day INTEGER NOT NULL,
+            gross_minor INTEGER NOT NULL,
+            chargeable_fraction REAL NOT NULL DEFAULT 1.0,
+            currency TEXT NOT NULL DEFAULT 'TRY',
+            category TEXT NOT NULL DEFAULT 'DIGER',
+            card_id INTEGER,
+            note TEXT NOT NULL DEFAULT '',
+            raw_text TEXT NOT NULL DEFAULT '',
+            tokens TEXT NOT NULL DEFAULT ''
+        );
+    """.trimIndent()
+
+    @Test
+    fun v2To3_addsFixedExpenses_keepsOldExpenses() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        driver.execute(null, v2ExpenseTable, 0)
+        driver.execute(null, "INSERT INTO expense(date_epoch_day, gross_minor) VALUES (20103, 19500)", 0)
+
+        CinchDatabase.Schema.migrate(driver, 2, 3)
+
+        val queries = CinchDatabase(driver).cinchQueries
+        val old = queries.expensesBetween(20103, 20103).executeAsList().single()
+        assertEquals(19_500L, old.gross_minor)
+        assertEquals(null, old.fixed_expense_id)
+        assertTrue(queries.allFixedExpenses().executeAsList().isEmpty())
     }
 }

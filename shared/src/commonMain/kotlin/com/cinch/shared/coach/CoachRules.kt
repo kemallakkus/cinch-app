@@ -3,6 +3,7 @@ package com.cinch.shared.coach
 import com.cinch.shared.budget.BudgetStatus
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.AppLocale
+import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyFormatter
 import com.cinch.shared.parser.minusDays
 import com.cinch.shared.parser.plusDays
@@ -21,6 +22,8 @@ enum class NotificationType {
     STREAK,             // seri / kilometre taşı
     STATEMENT_DUE,      // ekstre günü yaklaşıyor
     SALARY,             // maaş günü
+    FIXED_DUE,          // yarın sabit gider ödeme günü
+    FIXED_UNPAID,       // bugün ödeme günü, henüz "ödendi" işaretlenmedi
 }
 
 /** Planlanmış tek bildirim. */
@@ -58,7 +61,11 @@ data class CoachInput(
     val expenses: List<Expense> = emptyList(),
     val statementDates: List<LocalDate> = emptyList(),
     val salaryDates: List<LocalDate> = emptyList(),
+    val fixedDues: List<FixedDue> = emptyList(),
 )
+
+/** Ufuktaki bir sabit gider ödeme günü. [paid] = o ayın ödemesi zaten işaretlendi. */
+data class FixedDue(val name: String, val amount: Money, val date: LocalDate, val paid: Boolean)
 
 /**
  * Her kayıttan sonra önümüzdeki 7 günün yerel bildirimlerini yeniden hesaplar.
@@ -77,6 +84,8 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(streak(input, config))
             addAll(statementDue(input, config))
             addAll(salary(input, config))
+            addAll(fixedDue(input, config))
+            addAll(fixedUnpaid(input, config))
         }
         return applyConstraints(candidates, config)
     }
@@ -222,6 +231,37 @@ class CoachRules(private val horizonDays: Int = 7) {
             }
             CoachNotification(day, LocalTime(9, 0), NotificationType.SALARY, 30, msg)
         }
+    }
+
+    /** Ödeme gününden bir gün önce; aynı gün birden çok ödeme varsa tek bildirimde toplanır. */
+    private fun fixedDue(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val horizonSet = horizon(input.today).toSet()
+        return input.fixedDues.filter { !it.paid }
+            .groupBy { it.date.minusDays(1) }
+            .filterKeys { it in horizonSet }
+            .map { (notifyDay, dues) ->
+                val list = dues.joinToString { "${it.name} ${MoneyFormatter.format(it.amount, config.locale)}" }
+                val msg = when (config.locale) {
+                    AppLocale.TR -> if (dues.size == 1) "Yarın ödeme günü: $list." else "Yarın ${dues.size} ödeme var: $list."
+                    AppLocale.EN -> if (dues.size == 1) "Payment due tomorrow: $list." else "${dues.size} payments due tomorrow: $list."
+                }
+                CoachNotification(notifyDay, LocalTime(19, 0), NotificationType.FIXED_DUE, 75, msg)
+            }
+    }
+
+    /** Ödeme günü akşamı, hâlâ işaretlenmemişse: "ödendi mi?" (ay hesabı doğru kalsın diye). */
+    private fun fixedUnpaid(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val horizonSet = horizon(input.today).toSet()
+        return input.fixedDues.filter { !it.paid && it.date in horizonSet }
+            .groupBy { it.date }
+            .map { (day, dues) ->
+                val names = dues.joinToString { it.name }
+                val msg = when (config.locale) {
+                    AppLocale.TR -> "$names ödendi mi? Ödediysen Cinch'te işaretle, ay hesabın doğru kalsın."
+                    AppLocale.EN -> "Did you pay $names? Mark it in Cinch to keep your month accurate."
+                }
+                CoachNotification(day, LocalTime(20, 30), NotificationType.FIXED_UNPAID, 65, msg)
+            }
     }
 
     // ───────────────────────── Kısıtlar ─────────────────────────

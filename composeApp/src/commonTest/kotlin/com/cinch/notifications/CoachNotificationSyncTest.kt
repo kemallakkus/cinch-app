@@ -14,6 +14,7 @@ import com.cinch.ui.FakeBudgetRepository
 import com.cinch.ui.FakeCardRepository
 import com.cinch.ui.FakeClock
 import com.cinch.ui.FakeExpenseRepository
+import com.cinch.ui.FakeFixedExpenseRepository
 import com.cinch.ui.FakeIncomeRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -67,7 +68,9 @@ class CoachNotificationSyncTest {
         val expenses = FakeExpenseRepository()
         val cards = FakeCardRepository()
         val clock = FakeClock(wednesday, LocalTime(12, 0))
-        val plan = PlanCoachWeek(budgets, expenses, cards, FakeIncomeRepository(), BudgetEngine(), CoachRules())
+        val plan = PlanCoachWeek(
+            budgets, expenses, cards, FakeIncomeRepository(), FakeFixedExpenseRepository(), BudgetEngine(), CoachRules(),
+        )
         val scheduler = FakeScheduler()
         val sync = CoachNotificationSync(
             CoachNotificationPlanner(plan, clock), scheduler, budgets, expenses, cards, clock, scope,

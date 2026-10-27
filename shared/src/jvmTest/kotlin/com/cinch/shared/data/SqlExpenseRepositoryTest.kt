@@ -40,6 +40,7 @@ class SqlExpenseRepositoryTest {
             note = "akşam",
             tokens = listOf("yemek", "qnb"),
             rawText = "625,50 yemek qnb yarısı geri geldi",
+            fixedExpenseId = 7,
         )
         val id = repo.add(expense)
 

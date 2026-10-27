@@ -2,9 +2,11 @@ package com.cinch.shared.budget
 
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlExpenseRepository
+import com.cinch.shared.data.SqlFixedExpenseRepository
 import com.cinch.shared.data.SqlIncomeRepository
 import com.cinch.shared.data.newDatabase
 import com.cinch.shared.domain.Expense
+import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Income
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -25,6 +27,7 @@ class ObserveMonthSummaryTest {
 
     private class Fixture(
         val incomes: SqlIncomeRepository,
+        val fixed: SqlFixedExpenseRepository,
         val expenses: SqlExpenseRepository,
         val observe: ObserveMonthSummary,
     )
@@ -34,7 +37,8 @@ class ObserveMonthSummaryTest {
         val io = StandardTestDispatcher(testScheduler)
         val incomes = SqlIncomeRepository(db, io)
         val expenses = SqlExpenseRepository(db, io)
-        return Fixture(incomes, expenses, ObserveMonthSummary(SqlBudgetRepository(db, io), incomes, expenses))
+        val fixed = SqlFixedExpenseRepository(db, io)
+        return Fixture(incomes, fixed, expenses, ObserveMonthSummary(SqlBudgetRepository(db, io), incomes, fixed, expenses))
     }
 
     @Test
@@ -84,5 +88,29 @@ class ObserveMonthSummaryTest {
         assertFalse(summary.hasIncome)
         assertEquals(tl(-100), summary.remaining)
         assertNull(summary.nextPayday)
+    }
+
+    @Test
+    fun fixedExpenses_plannedUntilPaid_thenActual_andNotCountedAsSpending() = runTest {
+        val f = fixture()
+        f.incomes.add(Income(name = "Maaş", amount = tl(40_000), dayOfMonth = 15))
+        val rentId = f.fixed.add(FixedExpense(name = "Kira", amount = tl(15_000), dayOfMonth = 1))
+        f.fixed.add(FixedExpense(name = "Elektrik", amount = tl(800), dayOfMonth = 25))
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 5), grossAmount = tl(1_000)))
+
+        val before = f.observe(today).first()
+        assertEquals(tl(15_800), before.fixedTotal)
+        assertEquals(2, before.pendingFixed)
+        assertEquals(tl(23_200), before.remaining) // 40.000 − 15.800 − 1.000
+
+        // Kira ödendi (gerçek tutar biraz farklı): harcama değil, sabit gider sayılır.
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 2), grossAmount = tl(15_100), fixedExpenseId = rentId))
+        val after = f.observe(today).first()
+
+        assertEquals(tl(15_900), after.fixedTotal)
+        assertEquals(1, after.pendingFixed)
+        assertEquals(tl(1_000), after.spent)
+        assertEquals(tl(23_100), after.remaining)
+        assertEquals(tl(5_500), after.weeklySuggestion) // (40.000 − 15.900) / 4,35 ≈ 5.542 → 50'liğe aşağı
     }
 }

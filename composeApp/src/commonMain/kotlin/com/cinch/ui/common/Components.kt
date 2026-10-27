@@ -97,6 +97,7 @@ fun DayOfMonthField(
     supportingText: String? = null,
     optional: Boolean = true,
     enabled: Boolean = true,
+    isError: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
@@ -105,6 +106,7 @@ fun DayOfMonthField(
             onValueChange = {},
             readOnly = true,
             enabled = enabled,
+            isError = isError,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(label) },
             placeholder = { Text("Seç") },

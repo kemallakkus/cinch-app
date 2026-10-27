@@ -294,4 +294,14 @@ class HomeViewModelTest {
         assertTrue(days[2].isToday)
         assertTrue(days[3].isFuture && !days[2].isFuture)
     }
+
+    @Test
+    fun fixedPayments_stayOutOfWeekListAndShare() = testVm { f ->
+        f.expenses.add(Expense(date = monday, grossAmount = tl(15_000), fixedExpenseId = 1, rawText = "Kira"))
+        f.expenses.add(Expense(date = monday, grossAmount = tl(50)))
+        runCurrent()
+
+        assertEquals(listOf(tl(50)), f.state.weekExpenses.map { it.grossAmount })
+        assertEquals(tl(50), f.state.status!!.todaySpent)
+    }
 }

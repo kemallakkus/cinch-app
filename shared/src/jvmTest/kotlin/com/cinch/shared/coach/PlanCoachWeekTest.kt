@@ -5,9 +5,13 @@ import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
 import com.cinch.shared.data.SqlExpenseRepository
+import com.cinch.shared.data.SqlFixedExpenseRepository
 import com.cinch.shared.data.SqlIncomeRepository
 import com.cinch.shared.data.newDatabase
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.Expense
+import com.cinch.shared.domain.FixedExpense
+import com.cinch.shared.domain.FixedExpenseKind
 import com.cinch.shared.domain.Income
 import com.cinch.shared.money.AppLocale
 import com.cinch.shared.money.Currency
@@ -35,6 +39,7 @@ class PlanCoachWeekTest {
         val expenses: SqlExpenseRepository,
         val cards: SqlCardRepository,
         val incomes: SqlIncomeRepository,
+        val fixed: SqlFixedExpenseRepository,
         val plan: PlanCoachWeek,
     )
 
@@ -45,9 +50,10 @@ class PlanCoachWeekTest {
         val expenses = SqlExpenseRepository(db, io)
         val cards = SqlCardRepository(db, io)
         val incomes = SqlIncomeRepository(db, io)
+        val fixed = SqlFixedExpenseRepository(db, io)
         return Fixture(
-            budgets, expenses, cards, incomes,
-            PlanCoachWeek(budgets, expenses, cards, incomes, BudgetEngine(), CoachRules()),
+            budgets, expenses, cards, incomes, fixed,
+            PlanCoachWeek(budgets, expenses, cards, incomes, fixed, BudgetEngine(), CoachRules()),
         )
     }
 
@@ -138,5 +144,45 @@ class PlanCoachWeekTest {
             .single { it.type == NotificationType.WEEKLY_CLOSING }
 
         assertEquals(LocalDate(2025, 1, 18), closing.date)
+    }
+
+    @Test
+    fun fixedDue_remindsDayBefore_andAsksOnTheDayIfUnpaid() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        f.fixed.add(FixedExpense(name = "Kira", amount = tl(15_000), dayOfMonth = 15, kind = FixedExpenseKind.RENT))
+        f.fixed.add(FixedExpense(name = "İnternet", amount = tl(450), dayOfMonth = 15, kind = FixedExpenseKind.BILL))
+
+        val plan = f.plan(today) // 13 Ocak
+        val due = plan.single { it.type == NotificationType.FIXED_DUE }
+        val unpaid = plan.single { it.type == NotificationType.FIXED_UNPAID }
+
+        assertEquals(LocalDate(2025, 1, 14), due.date)
+        assertTrue("2 ödeme" in due.message && "Kira" in due.message, due.message)
+        assertEquals(LocalDate(2025, 1, 15), unpaid.date)
+    }
+
+    @Test
+    fun fixedAlreadyPaidThisMonth_isNotReminded() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        val rent = f.fixed.add(FixedExpense(name = "Kira", amount = tl(15_000), dayOfMonth = 15))
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 10), grossAmount = tl(15_000), fixedExpenseId = rent))
+
+        val plan = f.plan(today)
+
+        assertTrue(plan.none { it.type == NotificationType.FIXED_DUE || it.type == NotificationType.FIXED_UNPAID })
+    }
+
+    @Test
+    fun fixedPayment_doesNotCountAsLoggedSpending() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        f.expenses.add(Expense(date = today, grossAmount = tl(15_000), fixedExpenseId = 1))
+
+        val midday = f.plan(today).first { it.type == NotificationType.MIDDAY_REMAINING }
+
+        // Kira haftalık paydan düşülmez: (700 - 0) / 7 = 100 ₺
+        assertTrue(MoneyFormatter.format(tl(100), AppLocale.TR) in midday.message, midday.message)
     }
 }

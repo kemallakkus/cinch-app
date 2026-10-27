@@ -5,7 +5,9 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Income
+import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.time.LocalClock
@@ -100,6 +102,29 @@ class FakeIncomeRepository : IncomeRepository {
 
     override suspend fun update(income: Income) {
         all.update { list -> list.map { if (it.id == income.id) income else it } }
+    }
+
+    override suspend fun delete(id: Long) {
+        all.update { list -> list.filterNot { it.id == id } }
+    }
+}
+
+class FakeFixedExpenseRepository : FixedExpenseRepository {
+    val all = MutableStateFlow<List<FixedExpense>>(emptyList())
+    private var nextId = 1L
+
+    override fun observeAll(): Flow<List<FixedExpense>> = all
+    override suspend fun all(): List<FixedExpense> = all.value
+    override suspend fun get(id: Long): FixedExpense? = all.value.firstOrNull { it.id == id }
+
+    override suspend fun add(fixed: FixedExpense): Long {
+        val id = nextId++
+        all.update { it + fixed.copy(id = id) }
+        return id
+    }
+
+    override suspend fun update(fixed: FixedExpense) {
+        all.update { list -> list.map { if (it.id == fixed.id) fixed else it } }
     }
 
     override suspend fun delete(id: Long) {

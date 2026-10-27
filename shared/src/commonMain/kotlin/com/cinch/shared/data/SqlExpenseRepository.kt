@@ -55,6 +55,7 @@ class SqlExpenseRepository(
                     note = expense.note,
                     raw_text = expense.rawText,
                     tokens = encodeTokens(expense.tokens),
+                    fixed_expense_id = expense.fixedExpenseId,
                 )
                 queries.lastInsertedRowId().executeAsOne()
             }

@@ -12,6 +12,7 @@ import kotlinx.datetime.LocalDate
  * @param cardId harcamanın bağlı olduğu kart; nakit ise null.
  * @param tokens hızlı kayıttan ayrıştırılmış kelimeler (alışkanlık analizi için).
  * @param rawText kullanıcının yazdığı ham metin (ör. "195 market"); listede gösterilir.
+ * @param fixedExpenseId doluysa bu kayıt bir sabit giderin ödemesidir: haftalık paya sayılmaz, ay hesabına girer.
  */
 data class Expense(
     val id: Long = 0,
@@ -23,7 +24,10 @@ data class Expense(
     val note: String = "",
     val tokens: List<String> = emptyList(),
     val rawText: String = "",
+    val fixedExpenseId: Long? = null,
 ) {
+    val isFixedPayment: Boolean get() = fixedExpenseId != null
+
     /** Kullanıcının sınıra sayılan payı. */
     val chargeableAmount: Money get() = grossAmount * chargeableFraction
 }

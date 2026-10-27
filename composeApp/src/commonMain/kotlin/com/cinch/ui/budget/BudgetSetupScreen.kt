@@ -13,6 +13,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -89,6 +92,8 @@ fun BudgetSetupScreen(
                 lineLimits = TextFieldLineLimits.SingleLine,
             )
 
+            SuggestionCard(state.suggestion, onUse = { onEvent(BudgetSetupEvent.UseSuggestion) })
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Hafta hangi gün başlasın?", style = MaterialTheme.typography.titleSmall)
                 WeekStartPicker(selected = state.weekStart, onPick = { onEvent(BudgetSetupEvent.WeekStartPicked(it)) })
@@ -117,6 +122,50 @@ private fun WeekStartPicker(selected: DayOfWeek, onPick: (DayOfWeek) -> Unit) {
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
             ) {
                 Text(day.longLabel)
+            }
+        }
+    }
+}
+
+/**
+ * Gelir ve sabit giderler girildiyse haftalık sınır önerisi; gelir yoksa "Bu ay" sekmesine davet.
+ */
+@Composable
+private fun SuggestionCard(suggestion: LimitSuggestion?, onUse: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            when {
+                suggestion == null -> {
+                    Text("💡 Sana bir sınır önerelim mi?", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "\"Bu ay\" sekmesinden gelirini ve kira, fatura gibi sabit giderlerini eklersen, " +
+                            "haftada ne kadar harcayabileceğini hesaplarız.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                suggestion.weekly == null -> {
+                    Text("💡 Sabit giderler gelirini aşıyor", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Gelirin ${suggestion.monthlyIncome.display()}, sabit giderlerin " +
+                            "${suggestion.monthlyFixed.display()}. Harcamaya para kalmıyor; önce sabit giderlere bakalım.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                else -> {
+                    Text(
+                        "💡 Önerimiz: haftada en fazla ${suggestion.weekly.display()}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        "Gelirin ${suggestion.monthlyIncome.display()}, sabit giderlerin ${suggestion.monthlyFixed.display()}. " +
+                            "Kalanı ayın haftalarına böldük. Biraz biriktirmek istersen daha düşük yaz.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    FilledTonalButton(onClick = onUse) { Text("Bunu kullan") }
+                }
             }
         }
     }

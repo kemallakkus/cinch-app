@@ -17,11 +17,23 @@ data class BudgetSetupState(
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     val dailyHint: Money? = null,
     val limitError: Boolean = false,
+    val suggestion: LimitSuggestion? = null,
     val isSaving: Boolean = false,
 )
 
+/**
+ * Gelir ve sabit giderlerden haftalık sınır önerisi.
+ *
+ * @param weekly önerilen haftalık sınır; gelir yoksa ya da sabit giderler geliri aşıyorsa null.
+ */
+@Immutable
+data class LimitSuggestion(val monthlyIncome: Money, val monthlyFixed: Money, val weekly: Money?)
+
 sealed interface BudgetSetupEvent {
     data class WeekStartPicked(val day: DayOfWeek) : BudgetSetupEvent
+
+    /** Öneriyi sınır alanına yaz. */
+    data object UseSuggestion : BudgetSetupEvent
     data object Save : BudgetSetupEvent
 }
 

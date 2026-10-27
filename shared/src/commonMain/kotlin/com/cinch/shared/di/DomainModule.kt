@@ -2,6 +2,7 @@ package com.cinch.shared.di
 
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.ObserveBudgetStatus
+import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.CorrectionStore
@@ -12,6 +13,7 @@ import com.cinch.shared.coach.PlanCoachWeek
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.parser.QuickEntryParser
@@ -67,16 +69,21 @@ class DomainModule {
         expenses: ExpenseRepository,
         cards: CardRepository,
         incomes: IncomeRepository,
+        fixedExpenses: FixedExpenseRepository,
         engine: BudgetEngine,
         rules: CoachRules,
-    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, engine, rules)
+    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, fixedExpenses, engine, rules)
 
     @Factory
     fun observeMonthSummary(
         budgets: BudgetRepository,
         incomes: IncomeRepository,
+        fixedExpenses: FixedExpenseRepository,
         expenses: ExpenseRepository,
-    ): ObserveMonthSummary = ObserveMonthSummary(budgets, incomes, expenses)
+    ): ObserveMonthSummary = ObserveMonthSummary(budgets, incomes, fixedExpenses, expenses)
+
+    @Factory
+    fun fixedPayments(expenses: ExpenseRepository): FixedPayments = FixedPayments(expenses)
 
     @Factory
     fun coachNotificationPlanner(plan: PlanCoachWeek, clock: LocalClock): CoachNotificationPlanner =

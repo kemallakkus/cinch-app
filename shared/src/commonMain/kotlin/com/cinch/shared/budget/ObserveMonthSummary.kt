@@ -1,8 +1,10 @@
 package com.cinch.shared.budget
 
+import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Income
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -18,54 +20,75 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 
 /**
- * Ayın özeti: gelir, harcama (kullanıcının payı) ve kalan.
+ * Ayın özeti: gelir − sabit giderler − serbest harcamalar = elinde kalan.
  *
+ * @param fixed sabit giderlerin bu ayki durumları (ödendi / bekliyor), ödeme günü sırasıyla.
+ * @param fixedTotal sabit giderlerin ay toplamı: ödenenlerin gerçek, bekleyenlerin planlanan tutarı.
+ * @param spent serbest harcamalar (kullanıcının payı); sabit gider ödemeleri hariç.
  * @param nextPayday bugünden itibaren ilk gelir günü; günü girilmiş gelir yoksa null.
  */
 data class MonthSummary(
     val monthStart: LocalDate,
     val monthEnd: LocalDate,
     val income: Money,
+    val fixed: List<FixedStatus>,
+    val fixedTotal: Money,
     val spent: Money,
     val remaining: Money,
     val nextPayday: Payday?,
 ) {
     val hasIncome: Boolean get() = !income.isZero
+
+    /** Bu ay henüz "ödendi" işaretlenmemiş sabit gider sayısı. */
+    val pendingFixed: Int get() = fixed.count { it.state != FixedPaymentState.PAID }
+
+    /** Haftalık sınır önerisi; gelir yoksa ya da sabit giderler geliri aşıyorsa null. */
+    val weeklySuggestion: Money? get() = WeeklyLimitSuggestion.suggest(income, fixedTotal)
 }
 
 /** @param daysAway 0 = bugün. */
 data class Payday(val income: Income, val date: LocalDate, val daysAway: Int)
 
 /**
- * Gelirler, bütçe ve bu ayın harcamalarını izleyip [MonthSummary] yayar. Tutarlar bütçenin para
- * biriminde (bütçe yoksa TL); başka birimdeki gelir ve harcamalar toplama girmez.
+ * Gelirler, sabit giderler, bütçe ve bu ayın harcamalarını izleyip [MonthSummary] yayar. Tutarlar bütçenin
+ * para biriminde (bütçe yoksa TL); başka birimdeki kayıtlar toplama girmez.
  */
 @OptIn(ExperimentalCoroutinesApi::class) // flatMapLatest
 class ObserveMonthSummary(
     private val budgets: BudgetRepository,
     private val incomes: IncomeRepository,
+    private val fixedExpenses: FixedExpenseRepository,
     private val expenses: ExpenseRepository,
 ) {
+
+    private data class Inputs(
+        val currency: Currency,
+        val incomes: List<Income>,
+        val fixed: List<FixedExpense>,
+    )
 
     operator fun invoke(today: LocalDate): Flow<MonthSummary> {
         val monthStart = LocalDate(today.year, today.month, 1)
         val monthEnd = monthStart.plus(DatePeriod(months = 1)).minusDays(1)
-        return combine(budgets.observe(), incomes.observeAll()) { budget, list ->
-            (budget?.currency ?: Currency.TRY) to list
-        }.flatMapLatest { (currency, incomeList) ->
-            expenses.observeBetween(monthStart, monthEnd).map { monthExpenses ->
-                val income = Money.sum(incomeList.filter { it.currency == currency }.map { it.amount }, currency)
-                val spent = Money.sum(
-                    monthExpenses.filter { it.grossAmount.currency == currency }.map { it.chargeableAmount },
-                    currency,
-                )
+        return combine(budgets.observe(), incomes.observeAll(), fixedExpenses.observeAll()) { budget, incomeList, fixed ->
+            val currency = budget?.currency ?: Currency.TRY
+            Inputs(currency, incomeList.filter { it.currency == currency }, fixed.filter { it.currency == currency })
+        }.flatMapLatest { inputs ->
+            expenses.observeBetween(monthStart, monthEnd).map { all ->
+                val monthExpenses = all.filter { it.grossAmount.currency == inputs.currency }
+                val income = Money.sum(inputs.incomes.map { it.amount }, inputs.currency)
+                val fixed = fixedStatuses(inputs.fixed, monthExpenses, today)
+                val fixedTotal = Money.sum(fixed.map { it.amountForMonth }, inputs.currency)
+                val spent = Money.sum(monthExpenses.discretionary().map { it.chargeableAmount }, inputs.currency)
                 MonthSummary(
                     monthStart = monthStart,
                     monthEnd = monthEnd,
                     income = income,
+                    fixed = fixed,
+                    fixedTotal = fixedTotal,
                     spent = spent,
-                    remaining = income - spent,
-                    nextPayday = nextPayday(incomeList.filter { it.currency == currency }, today),
+                    remaining = income - fixedTotal - spent,
+                    nextPayday = nextPayday(inputs.incomes, today),
                 )
             }
         }

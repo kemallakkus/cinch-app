@@ -68,7 +68,11 @@ class HomeViewModel(
                 val first = BudgetEngine.startOfWeek(day, weekStart)
                 expenses.observeBetween(first, first.plus(DatePeriod(days = 6)))
             }
-    }.map { list -> list.sortedWith(compareByDescending<Expense> { it.date }.thenByDescending { it.id }) }
+    }.map { list ->
+        // Sabit gider ödemeleri (kira, fatura) "Bu ay" sekmesinde; haftalık listede yalnız serbest harcamalar.
+        list.filterNot { it.isFixedPayment }
+            .sortedWith(compareByDescending<Expense> { it.date }.thenByDescending { it.id })
+    }
 
     val state: StateFlow<HomeState> = combine(
         _state,

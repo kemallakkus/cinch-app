@@ -87,4 +87,18 @@ class ObserveBudgetStatusTest {
 
         assertEquals(listOf(null, tl(0), tl(120), tl(120)), spent)
     }
+
+    @Test
+    fun fixedPayments_doNotCountTowardWeeklyShare() = runTest {
+        val f = fixture()
+        val today = LocalDate(2025, 1, 15)
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        f.expenses.add(Expense(date = today, grossAmount = tl(15_000), fixedExpenseId = 1)) // kira
+        f.expenses.add(Expense(date = today, grossAmount = tl(100)))
+
+        val status = f.observe(today).first()!!
+
+        assertEquals(tl(100), status.weekSpent)
+        assertEquals(tl(100), status.monthTotal)
+    }
 }

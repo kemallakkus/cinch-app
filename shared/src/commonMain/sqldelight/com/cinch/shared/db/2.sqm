@@ -1,0 +1,15 @@
+-- Sürüm 2 → 3: sabit giderler (kira, fatura, abonelik, kredi taksiti...).
+-- Ödenen sabit gider, o gidere bağlı bir harcama kaydıdır (fixed_expense_id): haftalık paya sayılmaz,
+-- ay hesabına ve (kartla ödendiyse) kart karşılaştırmasına girer.
+
+CREATE TABLE IF NOT EXISTS fixed_expense (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    amount_minor INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    day_of_month INTEGER NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'OTHER',
+    card_id INTEGER
+);
+
+ALTER TABLE expense ADD COLUMN fixed_expense_id INTEGER;

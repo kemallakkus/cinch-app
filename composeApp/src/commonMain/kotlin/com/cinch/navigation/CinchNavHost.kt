@@ -44,6 +44,7 @@ import com.cinch.ui.cards.CardDetailWrapper
 import com.cinch.ui.cards.CardEditWrapper
 import com.cinch.ui.cards.CardsWrapper
 import com.cinch.ui.home.HomeWrapper
+import com.cinch.ui.month.FixedEditWrapper
 import com.cinch.ui.month.IncomeEditWrapper
 import com.cinch.ui.month.MonthWrapper
 import com.cinch.ui.settings.SettingsWrapper
@@ -184,8 +185,11 @@ private fun cinchEntries(
         MonthWrapper(
             onAddIncome = { navigate(IncomeEditRoute()) },
             onOpenIncome = { id -> navigate(IncomeEditRoute(id)) },
+            onAddFixed = { navigate(FixedEditRoute()) },
+            onOpenFixed = { id -> navigate(FixedEditRoute(id)) },
         )
     }
+    entry<FixedEditRoute> { route -> FixedEditWrapper(route = route, onDone = goBack, onBack = goBack) }
     entry<IncomeEditRoute> { route -> IncomeEditWrapper(route = route, onDone = goBack, onBack = goBack) }
     entry<CardsRoute> {
         CardsWrapper(

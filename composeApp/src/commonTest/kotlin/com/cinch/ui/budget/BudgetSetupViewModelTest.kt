@@ -7,7 +7,12 @@ import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
+import com.cinch.shared.domain.FixedExpense
+import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.Income
 import com.cinch.ui.FakeBudgetRepository
+import com.cinch.ui.FakeFixedExpenseRepository
+import com.cinch.ui.FakeIncomeRepository
 import androidx.lifecycle.viewModelScope
 import com.cinch.ui.withTestMain
 import kotlinx.coroutines.cancel
@@ -30,11 +35,17 @@ class BudgetSetupViewModelTest {
 
     private fun testVm(
         existing: BudgetConfig? = null,
+        incomeList: List<Income> = emptyList(),
+        fixedList: List<FixedExpense> = emptyList(),
         block: suspend TestScope.(BudgetSetupViewModel, FakeBudgetRepository) -> Unit,
     ) = withTestMain {
         runTest {
             val repo = FakeBudgetRepository(existing)
-            val vm = BudgetSetupViewModel(BudgetSetupRoute(isOnboarding = existing == null), repo)
+            val incomes = FakeIncomeRepository().apply { incomeList.forEach { add(it) } }
+            val fixed = FakeFixedExpenseRepository().apply { fixedList.forEach { add(it) } }
+            val vm = BudgetSetupViewModel(
+                BudgetSetupRoute(isOnboarding = existing == null), repo, incomes, fixed,
+            )
             runCurrent()
             block(vm, repo)
             vm.viewModelScope.cancel()
@@ -106,5 +117,27 @@ class BudgetSetupViewModelTest {
             BudgetConfig(weeklyLimit = tl(800), weekStart = DayOfWeek.SUNDAY, weeklyGoal = tl(500)),
             repo.config.value,
         )
+    }
+
+    @Test
+    fun suggestion_fromIncomeAndFixedExpenses() = testVm(
+        incomeList = listOf(Income(name = "Maaş", amount = tl(40_000), dayOfMonth = 15)),
+        fixedList = listOf(
+            FixedExpense(name = "Kira", amount = tl(15_000), dayOfMonth = 1, kind = FixedExpenseKind.RENT),
+            FixedExpense(name = "Faturalar", amount = tl(7_000), dayOfMonth = 10, kind = FixedExpenseKind.BILL),
+        ),
+    ) { vm, _ ->
+        val suggestion = vm.state.value.suggestion!!
+        assertEquals(tl(22_000), suggestion.monthlyFixed)
+        assertEquals(tl(4_100), suggestion.weekly) // 18.000 / 4,35 ≈ 4.139 → 50'liğe aşağı
+
+        vm.onEvent(BudgetSetupEvent.UseSuggestion)
+        runCurrent()
+        assertEquals("4100", vm.state.value.weeklyLimit.text.toString())
+    }
+
+    @Test
+    fun noSuggestion_withoutIncome() = testVm { vm, _ ->
+        assertNull(vm.state.value.suggestion)
     }
 }

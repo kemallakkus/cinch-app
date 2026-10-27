@@ -3,15 +3,18 @@ package com.cinch.di
 import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.navigation.CardEditRoute
+import com.cinch.navigation.FixedEditRoute
 import com.cinch.navigation.IncomeEditRoute
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.shared.budget.ObserveBudgetStatus
+import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.shared.reconcile.Reconciler
@@ -21,6 +24,7 @@ import com.cinch.ui.cards.CardDetailViewModel
 import com.cinch.ui.cards.CardEditViewModel
 import com.cinch.ui.cards.CardsViewModel
 import com.cinch.ui.home.HomeViewModel
+import com.cinch.ui.month.FixedEditViewModel
 import com.cinch.ui.month.IncomeEditViewModel
 import com.cinch.ui.month.MonthViewModel
 import com.cinch.ui.root.RootViewModel
@@ -44,7 +48,9 @@ class UiModule {
     fun budgetSetupViewModel(
         @InjectedParam route: BudgetSetupRoute,
         budgets: BudgetRepository,
-    ): BudgetSetupViewModel = BudgetSetupViewModel(route, budgets)
+        incomes: IncomeRepository,
+        fixedExpenses: FixedExpenseRepository,
+    ): BudgetSetupViewModel = BudgetSetupViewModel(route, budgets, incomes, fixedExpenses)
 
     @KoinViewModel
     fun homeViewModel(
@@ -88,8 +94,16 @@ class UiModule {
     fun monthViewModel(
         observeMonthSummary: ObserveMonthSummary,
         incomes: IncomeRepository,
+        fixedPayments: FixedPayments,
         clock: LocalClock,
-    ): MonthViewModel = MonthViewModel(observeMonthSummary, incomes, clock)
+    ): MonthViewModel = MonthViewModel(observeMonthSummary, incomes, fixedPayments, clock)
+
+    @KoinViewModel
+    fun fixedEditViewModel(
+        @InjectedParam route: FixedEditRoute,
+        fixedExpenses: FixedExpenseRepository,
+        cards: CardRepository,
+    ): FixedEditViewModel = FixedEditViewModel(route, fixedExpenses, cards)
 
     @KoinViewModel
     fun incomeEditViewModel(@InjectedParam route: IncomeEditRoute, incomes: IncomeRepository): IncomeEditViewModel =

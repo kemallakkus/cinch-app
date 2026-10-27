@@ -29,7 +29,7 @@ class ObserveBudgetStatus(
                 if (config == null) return@flatMapLatest flowOf(null)
                 val range = BudgetEngine.statusRange(today, config.weekStart)
                 expenses.observeBetween(range.start, range.endInclusive)
-                    .map { list -> engine.status(list.inCurrencyOf(config), config, today) }
+                    .map { list -> engine.status(list.inCurrencyOf(config).discretionary(), config, today) }
             }
             .distinctUntilChanged()
 }
@@ -40,3 +40,6 @@ class ObserveBudgetStatus(
  */
 internal fun List<Expense>.inCurrencyOf(config: BudgetConfig): List<Expense> =
     filter { it.grossAmount.currency == config.currency }
+
+/** Serbest harcamalar: sabit gider ödemeleri (kira, fatura...) haftalık paya sayılmaz. */
+fun List<Expense>.discretionary(): List<Expense> = filterNot { it.isFixedPayment }

@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS expense (
     raw_text TEXT NOT NULL DEFAULT '',
     -- Hızlı kayıttan çıkan sade kelimeler, boşlukla ayrılmış (alışkanlık analizi için).
     tokens TEXT NOT NULL DEFAULT '',
+    -- Doluysa bu kayıt bir sabit giderin ödemesidir: haftalık paya sayılmaz, ay hesabına girer.
+    fixed_expense_id INTEGER,
     FOREIGN KEY (card_id) REFERENCES card(id)
 );
 
@@ -41,6 +43,19 @@ CREATE TABLE IF NOT EXISTS budget_config (
     salary_day INTEGER
 );
 
+-- Her ay ödenen sabit giderler (kira, fatura, abonelik, kredi taksiti...).
+CREATE TABLE IF NOT EXISTS fixed_expense (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    amount_minor INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    -- Ödeme günü (1–31); ay kısaysa son gün.
+    day_of_month INTEGER NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'OTHER',
+    -- Hangi kartla ödendiği; null = nakit/havale.
+    card_id INTEGER
+);
+
 -- Düzenli aylık gelirler (maaş, ek iş, kira geliri...).
 CREATE TABLE IF NOT EXISTS income (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,8 +68,8 @@ CREATE TABLE IF NOT EXISTS income (
 
 -- ───────── expense ─────────
 insertExpense:
-INSERT INTO expense(date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text, tokens)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO expense(date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text, tokens, fixed_expense_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 lastInsertedRowId:
 SELECT last_insert_rowid();
@@ -129,3 +144,19 @@ UPDATE income SET name = ?, amount_minor = ?, day_of_month = ? WHERE id = ?;
 
 deleteIncome:
 DELETE FROM income WHERE id = ?;
+
+-- ───────── fixed_expense ─────────
+allFixedExpenses:
+SELECT * FROM fixed_expense ORDER BY day_of_month, id;
+
+fixedExpenseById:
+SELECT * FROM fixed_expense WHERE id = ?;
+
+insertFixedExpense:
+INSERT INTO fixed_expense(name, amount_minor, currency, day_of_month, kind, card_id) VALUES (?, ?, ?, ?, ?, ?);
+
+updateFixedExpense:
+UPDATE fixed_expense SET name = ?, amount_minor = ?, day_of_month = ?, kind = ?, card_id = ? WHERE id = ?;
+
+deleteFixedExpense:
+DELETE FROM fixed_expense WHERE id = ?;

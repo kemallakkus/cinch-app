@@ -1,6 +1,7 @@
 package com.cinch.ui.common
 
 import com.cinch.shared.domain.Category
+import com.cinch.shared.domain.FixedExpenseKind
 import com.cinch.shared.money.AppLocale
 import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyFormatter
@@ -92,3 +93,21 @@ val DayOfWeek.initial: String get() = longLabel.take(1)
 
 /** "Ekim 2026". */
 fun LocalDate.monthYearLabel(): String = "${longMonths[month.ordinal]} $year"
+
+val FixedExpenseKind.label: String
+    get() = when (this) {
+        FixedExpenseKind.RENT -> "Kira"
+        FixedExpenseKind.BILL -> "Fatura"
+        FixedExpenseKind.SUBSCRIPTION -> "Abonelik"
+        FixedExpenseKind.LOAN -> "Kredi / taksit"
+        FixedExpenseKind.OTHER -> "Diğer"
+    }
+
+val FixedExpenseKind.emoji: String
+    get() = when (this) {
+        FixedExpenseKind.RENT -> "🏠"
+        FixedExpenseKind.BILL -> "💡"
+        FixedExpenseKind.SUBSCRIPTION -> "📺"
+        FixedExpenseKind.LOAN -> "🏦"
+        FixedExpenseKind.OTHER -> "📌"
+    }

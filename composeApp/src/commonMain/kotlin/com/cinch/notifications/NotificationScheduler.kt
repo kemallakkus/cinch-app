@@ -34,4 +34,6 @@ val NotificationType.title: String
         NotificationType.STREAK -> "Seri"
         NotificationType.STATEMENT_DUE -> "Ekstre günü"
         NotificationType.SALARY -> "Maaş günü"
+        NotificationType.FIXED_DUE -> "Yarın ödeme günü"
+        NotificationType.FIXED_UNPAID -> "Ödendi mi?"
     }
