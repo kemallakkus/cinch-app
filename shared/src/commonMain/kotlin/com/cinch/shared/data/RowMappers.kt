@@ -6,11 +6,13 @@ import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import com.cinch.shared.db.AllFixedPayments
 import com.cinch.shared.db.Budget_config as BudgetRow
 import com.cinch.shared.db.Card as CardRow
 import com.cinch.shared.db.Expense as ExpenseRow
@@ -32,14 +34,39 @@ internal fun ExpenseRow.toDomain(): Expense = Expense(
     fixedExpenseId = fixed_expense_id,
 )
 
-internal fun FixedRow.toDomain(): FixedExpense = FixedExpense(
+/**
+ * `allFixedPayments` sorgusu `fixed_expense_id IS NOT NULL` dediği için SQLDelight o sütunu null olamaz
+ * sayıp ayrı bir satır tipi üretir; tablo satırına çevirip aynı dönüşüm kullanılır.
+ */
+internal fun AllFixedPayments.toDomain(): Expense = ExpenseRow(
     id = id,
-    name = name,
-    amount = Money(amount_minor, Currency.fromCode(currency)),
-    dayOfMonth = day_of_month.toInt().coerceIn(1, 31),
-    kind = FixedExpenseKind.entries.firstOrNull { it.name == kind } ?: FixedExpenseKind.OTHER,
-    cardId = card_id,
-)
+    date_epoch_day = date_epoch_day,
+    gross_minor = gross_minor,
+    chargeable_fraction = chargeable_fraction,
+    currency = currency,
+    category = category,
+    card_id = card_id,
+    note = note,
+    raw_text = raw_text,
+    tokens = tokens,
+    fixed_expense_id = fixed_expense_id,
+).toDomain()
+
+internal fun FixedRow.toDomain(): FixedExpense {
+    val money = Currency.fromCode(currency)
+    return FixedExpense(
+        id = id,
+        name = name,
+        amount = Money(amount_minor, money),
+        dayOfMonth = day_of_month.toInt().coerceIn(1, 31),
+        kind = FixedExpenseKind.entries.firstOrNull { it.name == kind } ?: FixedExpenseKind.OTHER,
+        cardId = card_id,
+        plan = FixedPlan.entries.firstOrNull { it.name == plan } ?: FixedPlan.MONTHLY,
+        totalInstallments = total_installments?.toInt(),
+        paidBefore = paid_before.toInt(),
+        debt = debt_minor?.let { Money(it, money) },
+    )
+}
 
 internal fun IncomeRow.toDomain(): Income = Income(
     id = id,

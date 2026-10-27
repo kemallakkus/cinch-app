@@ -13,7 +13,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
@@ -32,6 +31,7 @@ data class MonthSummary(
     val monthEnd: LocalDate,
     val income: Money,
     val fixed: List<FixedStatus>,
+    val finishedFixed: List<FixedStatus> = emptyList(),
     val fixedTotal: Money,
     val spent: Money,
     val remaining: Money,
@@ -74,10 +74,12 @@ class ObserveMonthSummary(
             val currency = budget?.currency ?: Currency.TRY
             Inputs(currency, incomeList.filter { it.currency == currency }, fixed.filter { it.currency == currency })
         }.flatMapLatest { inputs ->
-            expenses.observeBetween(monthStart, monthEnd).map { all ->
+            // Borç ilerlemesi (taksit sayısı, kalan borç) geçmiş tüm ödemelerden hesaplanır.
+            combine(expenses.observeBetween(monthStart, monthEnd), expenses.observeFixedPayments()) { all, payments ->
                 val monthExpenses = all.filter { it.grossAmount.currency == inputs.currency }
                 val income = Money.sum(inputs.incomes.map { it.amount }, inputs.currency)
-                val fixed = fixedStatuses(inputs.fixed, monthExpenses, today)
+                val statuses = fixedStatuses(inputs.fixed, payments, today)
+                val fixed = statuses.filterNot { it.isArchived }
                 val fixedTotal = Money.sum(fixed.map { it.amountForMonth }, inputs.currency)
                 val spent = Money.sum(monthExpenses.discretionary().map { it.chargeableAmount }, inputs.currency)
                 MonthSummary(
@@ -85,6 +87,7 @@ class ObserveMonthSummary(
                     monthEnd = monthEnd,
                     income = income,
                     fixed = fixed,
+                    finishedFixed = statuses.filter { it.isArchived },
                     fixedTotal = fixedTotal,
                     spent = spent,
                     remaining = income - fixedTotal - spent,

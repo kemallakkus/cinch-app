@@ -46,6 +46,10 @@ class FakeExpenseRepository : ExpenseRepository {
 
     override suspend fun forCard(cardId: Long): List<Expense> = all.value.filter { it.cardId == cardId }
 
+    override fun observeFixedPayments(): Flow<List<Expense>> = all.map { list -> list.filter { it.isFixedPayment } }
+
+    override suspend fun fixedPayments(): List<Expense> = all.value.filter { it.isFixedPayment }
+
     override fun observeForCardBetween(cardId: Long, from: LocalDate, to: LocalDate): Flow<List<Expense>> =
         all.map { list -> list.filter { it.cardId == cardId && it.date in from..to } }
 

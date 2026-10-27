@@ -39,6 +39,10 @@ class SqlFixedExpenseRepository(
                     day_of_month = fixed.dayOfMonth.toLong(),
                     kind = fixed.kind.name,
                     card_id = fixed.cardId,
+                    plan = fixed.plan.name,
+                    total_installments = fixed.totalInstallments?.toLong(),
+                    paid_before = fixed.paidBefore.toLong(),
+                    debt_minor = fixed.debt?.minor,
                 )
                 queries.lastInsertedRowId().executeAsOne()
             }
@@ -52,6 +56,10 @@ class SqlFixedExpenseRepository(
                 day_of_month = fixed.dayOfMonth.toLong(),
                 kind = fixed.kind.name,
                 card_id = fixed.cardId,
+                plan = fixed.plan.name,
+                total_installments = fixed.totalInstallments?.toLong(),
+                paid_before = fixed.paidBefore.toLong(),
+                debt_minor = fixed.debt?.minor,
                 id = fixed.id,
             )
         }

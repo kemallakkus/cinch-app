@@ -53,7 +53,14 @@ CREATE TABLE IF NOT EXISTS fixed_expense (
     day_of_month INTEGER NOT NULL,
     kind TEXT NOT NULL DEFAULT 'OTHER',
     -- Hangi kartla ödendiği; null = nakit/havale.
-    card_id INTEGER
+    card_id INTEGER,
+    -- Ödeme şekli: MONTHLY (bitişi yok), INSTALLMENTS (taksitli), FLEXIBLE (esnek borç).
+    plan TEXT NOT NULL DEFAULT 'MONTHLY',
+    -- Taksitli: toplam taksit ve uygulamadan önce ödenmiş olanlar.
+    total_installments INTEGER,
+    paid_before INTEGER NOT NULL DEFAULT 0,
+    -- Esnek borç: eklendiği andaki kalan borç (sonraki ödemeler bundan düşer).
+    debt_minor INTEGER
 );
 
 -- Düzenli aylık gelirler (maaş, ek iş, kira geliri...).
@@ -153,10 +160,18 @@ fixedExpenseById:
 SELECT * FROM fixed_expense WHERE id = ?;
 
 insertFixedExpense:
-INSERT INTO fixed_expense(name, amount_minor, currency, day_of_month, kind, card_id) VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO fixed_expense(name, amount_minor, currency, day_of_month, kind, card_id, plan, total_installments, paid_before, debt_minor)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateFixedExpense:
-UPDATE fixed_expense SET name = ?, amount_minor = ?, day_of_month = ?, kind = ?, card_id = ? WHERE id = ?;
+UPDATE fixed_expense
+SET name = ?, amount_minor = ?, day_of_month = ?, kind = ?, card_id = ?,
+    plan = ?, total_installments = ?, paid_before = ?, debt_minor = ?
+WHERE id = ?;
+
+-- Tüm sabit gider ödemeleri: taksit sayısı ve kalan borç geçmiş ödemelerden hesaplanır.
+allFixedPayments:
+SELECT * FROM expense WHERE fixed_expense_id IS NOT NULL ORDER BY date_epoch_day, id;
 
 deleteFixedExpense:
 DELETE FROM fixed_expense WHERE id = ?;

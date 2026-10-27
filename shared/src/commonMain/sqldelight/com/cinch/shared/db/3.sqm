@@ -1,0 +1,7 @@
+-- Sürüm 3 → 4: sabit giderlerde ödeme şekli. Mevcut kayıtlar "her ay" (MONTHLY) olarak kalır.
+-- Taksitli: toplam taksit + önceden ödenen; esnek borç (Eminevim gibi): eklendiği andaki kalan borç.
+
+ALTER TABLE fixed_expense ADD COLUMN plan TEXT NOT NULL DEFAULT 'MONTHLY';
+ALTER TABLE fixed_expense ADD COLUMN total_installments INTEGER;
+ALTER TABLE fixed_expense ADD COLUMN paid_before INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE fixed_expense ADD COLUMN debt_minor INTEGER;

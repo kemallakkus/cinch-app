@@ -17,6 +17,11 @@ interface ExpenseRepository {
     /** Bir kartın aralıktaki harcamalarını izler (kart detayı, mutabakat). */
     fun observeForCardBetween(cardId: Long, from: LocalDate, to: LocalDate): Flow<List<Expense>>
 
+    /** Tüm sabit gider ödemeleri (taksit sayısı ve kalan borç bunlardan hesaplanır). */
+    fun observeFixedPayments(): Flow<List<Expense>>
+
+    suspend fun fixedPayments(): List<Expense>
+
     /** Harcamayı ekler ve yeni kaydın id'sini döner. [Expense.id] yok sayılır. */
     suspend fun add(expense: Expense): Long
 
