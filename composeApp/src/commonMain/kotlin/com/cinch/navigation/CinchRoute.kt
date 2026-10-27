@@ -17,3 +17,13 @@ data class BudgetSetupRoute(val isOnboarding: Boolean = false) : CinchRoute
 
 @Serializable
 data object HomeRoute : CinchRoute
+
+@Serializable
+data object CardsRoute : CinchRoute
+
+/** @param cardId düzenlenecek kart; null ise yeni kart. */
+@Serializable
+data class CardEditRoute(val cardId: Long? = null) : CinchRoute
+
+@Serializable
+data class CardDetailRoute(val cardId: Long) : CinchRoute

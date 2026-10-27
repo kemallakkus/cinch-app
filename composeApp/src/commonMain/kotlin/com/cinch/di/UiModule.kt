@@ -1,13 +1,21 @@
 package com.cinch.di
 
 import com.cinch.navigation.BudgetSetupRoute
+import com.cinch.navigation.CardDetailRoute
+import com.cinch.navigation.CardEditRoute
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.category.Categorizer
+import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.repository.BudgetRepository
+import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.reconcile.Reconciler
 import com.cinch.shared.time.LocalClock
 import com.cinch.ui.budget.BudgetSetupViewModel
+import com.cinch.ui.cards.CardDetailViewModel
+import com.cinch.ui.cards.CardEditViewModel
+import com.cinch.ui.cards.CardsViewModel
 import com.cinch.ui.home.HomeViewModel
 import com.cinch.ui.root.RootViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -35,6 +43,7 @@ class UiModule {
     fun homeViewModel(
         budgets: BudgetRepository,
         expenses: ExpenseRepository,
+        cards: CardRepository,
         observeBudgetStatus: ObserveBudgetStatus,
         parser: QuickEntryParser,
         categorizer: Categorizer,
@@ -43,10 +52,28 @@ class UiModule {
     ): HomeViewModel = HomeViewModel(
         budgets = budgets,
         expenses = expenses,
+        cards = cards,
         observeBudgetStatus = observeBudgetStatus,
         parser = parser,
         categorizer = categorizer,
         clock = clock,
         ioDispatcher = ioDispatcher,
     )
+
+    @KoinViewModel
+    fun cardsViewModel(cards: CardRepository): CardsViewModel = CardsViewModel(cards)
+
+    @KoinViewModel
+    fun cardEditViewModel(@InjectedParam route: CardEditRoute, cards: CardRepository): CardEditViewModel =
+        CardEditViewModel(route, cards)
+
+    @KoinViewModel
+    fun cardDetailViewModel(
+        @InjectedParam route: CardDetailRoute,
+        cards: CardRepository,
+        expenses: ExpenseRepository,
+        reconciler: Reconciler,
+        simulator: PayoffSimulator,
+        clock: LocalClock,
+    ): CardDetailViewModel = CardDetailViewModel(route, cards, expenses, reconciler, simulator, clock)
 }

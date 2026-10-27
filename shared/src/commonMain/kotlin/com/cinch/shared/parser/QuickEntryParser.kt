@@ -2,6 +2,7 @@ package com.cinch.shared.parser
 
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.TextNormalizer
+import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
@@ -18,6 +19,8 @@ import kotlinx.datetime.plus
  * @param grossAmount algılanan toplam tutar (null = tutar bulunamadı).
  * @param chargeableFraction kullanıcının sınıra sayılan payı (iade/paylaşım sonrası).
  * @param date algılanan tarih (varsayılan: bugün).
+ * @param tokens kategori ve alışkanlık için sade kelimeler (kart adı hariç).
+ * @param cardId metinde adı geçen kart; yoksa ya da belirsizse null.
  */
 data class ParsedEntry(
     val rawText: String,
@@ -27,12 +30,13 @@ data class ParsedEntry(
     val category: Category,
     val categoryConfidence: Double,
     val tokens: List<String>,
+    val cardId: Long? = null,
 ) {
     val chargeableAmount: Money?
         get() = grossAmount?.times(chargeableFraction)
 
     /** Kaydedilecek harcamaya çevirir. Tutar bulunamadıysa null (kaydedilecek bir şey yok). */
-    fun toExpense(cardId: Long? = null, note: String = ""): Expense? {
+    fun toExpense(cardId: Long? = this.cardId, note: String = ""): Expense? {
         val amount = grossAmount ?: return null
         return Expense(
             date = date,
@@ -56,7 +60,13 @@ class QuickEntryParser(
     private val defaultCurrency: Currency = Currency.TRY,
 ) {
 
-    fun parse(raw: String, today: LocalDate, currency: Currency = defaultCurrency): ParsedEntry {
+    /** @param cards kullanıcının kartları; metinde adı geçen kart [ParsedEntry.cardId] olur. */
+    fun parse(
+        raw: String,
+        today: LocalDate,
+        currency: Currency = defaultCurrency,
+        cards: List<Card> = emptyList(),
+    ): ParsedEntry {
         val tokens = TextNormalizer.tokenize(raw)
         val normalized = tokens.map { TextNormalizer.normalize(it) }
 
@@ -65,10 +75,13 @@ class QuickEntryParser(
         val fraction = extractChargeableFraction(normalized)
 
         // Kategorilendirme: sayısal ve tarih/pay anahtar kelimeleri hariç kelimeler.
-        val wordTokens = tokens.filter { tok ->
+        val candidates = tokens.filter { tok ->
             val n = TextNormalizer.normalize(tok)
             !tok.any { it.isDigit() } && n !in DATE_WORDS && n !in FRACTION_STOPWORDS
         }
+        // Kart adı kategori değildir: "qnb" ne sınıflandırmaya ne öğrenmeye ne alışkanlık sayımına girer.
+        val card = CardMatcher.match(candidates.map { TextNormalizer.normalize(it) }, cards)
+        val wordTokens = candidates.filter { TextNormalizer.normalize(it) !in card?.tokens.orEmpty() }
         val cat = categorizer.categorizeTokens(wordTokens)
 
         return ParsedEntry(
@@ -79,6 +92,7 @@ class QuickEntryParser(
             category = cat.category,
             categoryConfidence = cat.confidence,
             tokens = wordTokens.map { TextNormalizer.normalize(it) },
+            cardId = card?.card?.id,
         )
     }
 

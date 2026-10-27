@@ -16,6 +16,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeWrapper(
     onOpenBudget: () -> Unit,
+    onOpenCards: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -50,6 +51,7 @@ fun HomeWrapper(
         onEvent = viewModel::onEvent,
         snackbarHostState = snackbarHostState,
         onOpenBudget = onOpenBudget,
+        onOpenCards = onOpenCards,
         prompt = { NotificationPromptWrapper() },
     )
 }

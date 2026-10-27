@@ -42,6 +42,9 @@ class FakeExpenseRepository : ExpenseRepository {
 
     override suspend fun forCard(cardId: Long): List<Expense> = all.value.filter { it.cardId == cardId }
 
+    override fun observeForCardBetween(cardId: Long, from: LocalDate, to: LocalDate): Flow<List<Expense>> =
+        all.map { list -> list.filter { it.cardId == cardId && it.date in from..to } }
+
     override suspend fun add(expense: Expense): Long {
         val id = nextId++
         all.update { it + expense.copy(id = id) }
@@ -53,14 +56,29 @@ class FakeExpenseRepository : ExpenseRepository {
     }
 }
 
-class FakeCardRepository : CardRepository {
+class FakeCardRepository(private val expenses: FakeExpenseRepository? = null) : CardRepository {
     val all = MutableStateFlow<List<Card>>(emptyList())
+    private var nextId = 1L
+
     override fun observeAll(): Flow<List<Card>> = all
     override suspend fun all(): List<Card> = all.value
+    override fun observe(id: Long): Flow<Card?> = all.map { list -> list.firstOrNull { it.id == id } }
+    override suspend fun get(id: Long): Card? = all.value.firstOrNull { it.id == id }
+
     override suspend fun add(card: Card): Long {
-        val id = all.value.size + 1L
+        val id = nextId++
         all.update { it + card.copy(id = id) }
         return id
+    }
+
+    override suspend fun update(card: Card) {
+        all.update { list -> list.map { if (it.id == card.id) card else it } }
+    }
+
+    /** Gerçek depo gibi kartın harcamalarını nakde çevirir. */
+    override suspend fun delete(id: Long) {
+        all.update { list -> list.filterNot { it.id == id } }
+        expenses?.all?.update { list -> list.map { if (it.cardId == id) it.copy(cardId = null) else it } }
     }
 }
 

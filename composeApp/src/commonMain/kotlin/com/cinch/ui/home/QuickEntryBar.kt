@@ -3,6 +3,8 @@ package com.cinch.ui.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.parser.ParsedEntry
 import com.cinch.ui.common.display
@@ -56,6 +59,7 @@ fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
                     category = state.entryCategory ?: parsed.category,
                     state = state,
                     onPick = { onEvent(HomeEvent.CategoryPicked(it)) },
+                    onPickCard = { onEvent(HomeEvent.CardPicked(it)) },
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -82,16 +86,19 @@ fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EntryPreview(
     parsed: ParsedEntry,
     category: Category,
     state: HomeState,
     onPick: (Category) -> Unit,
+    onPickCard: (Long?) -> Unit,
 ) {
-    Row(
+    // Dar ekranda çipler alt satıra geçer.
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        itemVerticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val amount = parsed.chargeableAmount
@@ -101,6 +108,9 @@ private fun EntryPreview(
             color = if (amount == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         )
         CategoryPicker(selected = category, onPick = onPick)
+        if (state.cards.isNotEmpty()) {
+            CardPicker(cards = state.cards, selectedId = state.entryCardId, onPick = onPickCard)
+        }
 
         val details = buildList {
             if (parsed.date != state.today) add(parsed.date.relativeLabel(state.today))
@@ -131,6 +141,37 @@ private fun CategoryPicker(selected: Category, onPick: (Category) -> Unit) {
                     text = { Text("${category.emoji}  ${category.label}") },
                     onClick = {
                         onPick(category)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Kart yoksa hiç gösterilmez. Metinde kart adı geçerse kendiliğinden seçilir; buradan değiştirilir. */
+@Composable
+private fun CardPicker(cards: List<Card>, selectedId: Long?, onPick: (Long?) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = cards.firstOrNull { it.id == selectedId }
+    Box {
+        AssistChip(
+            onClick = { expanded = true },
+            label = { Text(if (selected == null) "💵 Nakit ▾" else "💳 ${selected.name} ▾") },
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("💵  Nakit") },
+                onClick = {
+                    onPick(null)
+                    expanded = false
+                },
+            )
+            cards.forEach { card ->
+                DropdownMenuItem(
+                    text = { Text("💳  ${card.name}") },
+                    onClick = {
+                        onPick(card.id)
                         expanded = false
                     },
                 )

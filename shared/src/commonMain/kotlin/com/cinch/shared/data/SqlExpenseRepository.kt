@@ -36,6 +36,12 @@ class SqlExpenseRepository(
             queries.expensesForCard(cardId).executeAsList().map { it.toDomain() }
         }
 
+    override fun observeForCardBetween(cardId: Long, from: LocalDate, to: LocalDate): Flow<List<Expense>> =
+        queries.expensesForCardBetween(cardId, from.toEpochDays(), to.toEpochDays())
+            .asFlow()
+            .mapToList(ioDispatcher)
+            .map { rows -> rows.map { it.toDomain() } }
+
     override suspend fun add(expense: Expense): Long =
         withContext(ioDispatcher) {
             queries.transactionWithResult {

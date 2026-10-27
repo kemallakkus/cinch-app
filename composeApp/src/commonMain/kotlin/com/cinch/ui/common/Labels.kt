@@ -67,3 +67,14 @@ fun LocalDate.relativeLabel(today: LocalDate): String = when (daysUntil(today)) 
     1 -> "Dün"
     else -> "${shortDays[dayOfWeek.isoDayNumber - 1]} $day ${shortMonths[month.ordinal]}"
 }
+
+/** "13 Oca". */
+fun LocalDate.shortLabel(): String = "$day ${shortMonths[month.ordinal]}"
+
+/** Faiz oranını forma ve ekrana yazmak için: 4.9 → "4,9", 5.0 → "5". */
+fun formatPercent(value: Double): String =
+    if (value % 1.0 == 0.0) value.toLong().toString() else value.toString().replace('.', ',')
+
+/** "4,9" ya da "4.9" → 4.9. Boş, geçersiz ya da 0–100 dışıysa null. */
+fun parsePercent(text: String): Double? =
+    text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it in 0.0..100.0 }

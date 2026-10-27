@@ -14,6 +14,9 @@ interface ExpenseRepository {
 
     suspend fun forCard(cardId: Long): List<Expense>
 
+    /** Bir kartın aralıktaki harcamalarını izler (kart detayı, mutabakat). */
+    fun observeForCardBetween(cardId: Long, from: LocalDate, to: LocalDate): Flow<List<Expense>>
+
     /** Harcamayı ekler ve yeni kaydın id'sini döner. [Expense.id] yok sayılır. */
     suspend fun add(expense: Expense): Long
 

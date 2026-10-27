@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,13 +51,18 @@ fun HomeScreen(
     onEvent: (HomeEvent) -> Unit,
     snackbarHostState: SnackbarHostState,
     onOpenBudget: () -> Unit,
+    onOpenCards: () -> Unit,
     prompt: @Composable () -> Unit = {},
 ) {
+    val cardNames = remember(state.cards) { state.cards.associate { it.id to it.name } }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Cinch") },
-                actions = { TextButton(onClick = onOpenBudget) { Text("Bütçe") } },
+                actions = {
+                    TextButton(onClick = onOpenCards) { Text("Kartlar") }
+                    TextButton(onClick = onOpenBudget) { Text("Bütçe") }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -104,6 +110,7 @@ fun HomeScreen(
                 ExpenseRow(
                     expense = expense,
                     today = state.today,
+                    cardName = expense.cardId?.let { cardNames[it] },
                     onDelete = { onEvent(HomeEvent.DeleteExpense(expense)) },
                 )
             }
@@ -167,7 +174,7 @@ private fun StatusCard(status: BudgetStatus) {
 }
 
 @Composable
-private fun ExpenseRow(expense: Expense, today: LocalDate, onDelete: () -> Unit) {
+private fun ExpenseRow(expense: Expense, today: LocalDate, cardName: String?, onDelete: () -> Unit) {
     val dismissState = rememberSwipeToDismissBoxState()
     SwipeToDismissBox(
         state = dismissState,
@@ -201,6 +208,7 @@ private fun ExpenseRow(expense: Expense, today: LocalDate, onDelete: () -> Unit)
                 val parts = buildList {
                     add(expense.category.label)
                     add(expense.date.relativeLabel(today))
+                    cardName?.let { add(it) }
                     if (shared) add("toplam ${expense.grossAmount.display()}")
                 }
                 Text(parts.joinToString(" · "))

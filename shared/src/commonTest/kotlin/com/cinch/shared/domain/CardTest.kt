@@ -45,4 +45,28 @@ class CardTest {
     fun statementDates_emptyWithoutStatementDay() {
         assertTrue(card(null).statementDatesBetween(LocalDate(2025, 1, 1), LocalDate(2025, 12, 31)).isEmpty())
     }
+
+    @Test
+    fun currentPeriod_startsAfterLastStatement() {
+        assertEquals(
+            LocalDate(2025, 1, 16)..LocalDate(2025, 2, 3),
+            card(15).currentPeriod(LocalDate(2025, 2, 3)),
+        )
+    }
+
+    @Test
+    fun currentPeriod_onStatementDay_isTheClosingPeriod() {
+        assertEquals(
+            LocalDate(2025, 1, 16)..LocalDate(2025, 2, 15),
+            card(15).currentPeriod(LocalDate(2025, 2, 15)),
+        )
+    }
+
+    @Test
+    fun currentPeriod_withoutStatementDay_isThisMonth() {
+        assertEquals(
+            LocalDate(2025, 2, 1)..LocalDate(2025, 2, 20),
+            card(null).currentPeriod(LocalDate(2025, 2, 20)),
+        )
+    }
 }

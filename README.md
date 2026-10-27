@@ -57,7 +57,9 @@ Eksik bağımlılık derleme anında hata verir (compile safety).
 |---|---|---|
 | Bütçe kurulumu | İlk açılışta (bütçe yoksa) açılır; haftalık sınır, hafta başlangıcı, maaş günü. Ana ekrandaki "Bütçe" ile düzenlenir | `ui/budget/` |
 | Ana ekran | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (sola kaydır → sil, "Geri al") | `ui/home/` |
-| Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori önizlenir; kategori düzeltilirse kelime öğrenilir | `ui/home/QuickEntryBar.kt` |
+| Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir | `ui/home/QuickEntryBar.kt` |
+| Kartlar | Kart listesi; ekleme/düzenleme (ad, ekstre günü, devreden borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
+| Kart detayı | Bu ekstre dönemi toplamı; mutabakat (bankadaki dönem içi tutar ↔ kayıtlar, eksik farkı tek dokunuşla ekleme); devreden borcun aylık ödemeyle kapanış süresi ve toplam faizi | `ui/cards/CardDetail*` |
 
 Navigation 3 (tek geri yığını, `navigation/CinchNavHost.kt`); her ekran `Wrapper` (ViewModel + effect) →
 `Screen(state, onEvent)` düzeninde. ViewModel'ler `di/UiModule.kt`'de `@KoinViewModel` ile tanımlı ve
@@ -104,7 +106,7 @@ Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.1
 ## Sonraki adımlar
 
 - Veritabanı migration'ları (ilk sürüm yayınlanmadan önce; şema şu an `CREATE TABLE IF NOT EXISTS`)
-- Kayıtlı harcamayı düzenleme (tutar/kategori); kart seçimi ve kart ekranı
+- Kayıtlı harcamayı düzenleme (tutar/kategori/kart)
 - Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - Opsiyonel cihaz içi OCR fiş okuma (ML Kit / Apple Vision)

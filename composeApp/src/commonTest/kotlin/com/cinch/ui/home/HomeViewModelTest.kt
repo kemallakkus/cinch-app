@@ -12,7 +12,9 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.domain.Card
 import com.cinch.ui.FakeBudgetRepository
+import com.cinch.ui.FakeCardRepository
 import com.cinch.ui.FakeExpenseRepository
 import com.cinch.ui.FakeClock
 import androidx.lifecycle.viewModelScope
@@ -43,6 +45,7 @@ class HomeViewModelTest {
         val vm: HomeViewModel,
         val budgets: FakeBudgetRepository,
         val expenses: FakeExpenseRepository,
+        val cards: FakeCardRepository,
         val today: FakeClock,
     ) {
         val state get() = vm.state.value
@@ -56,11 +59,13 @@ class HomeViewModelTest {
         runTest {
             val budgets = FakeBudgetRepository(budget)
             val expenses = FakeExpenseRepository()
+            val cards = FakeCardRepository(expenses)
             val clock = FakeClock(today)
             val categorizer = Categorizer(corrections = InMemoryCorrectionStore())
             val vm = HomeViewModel(
                 budgets = budgets,
                 expenses = expenses,
+                cards = cards,
                 observeBudgetStatus = ObserveBudgetStatus(budgets, expenses, BudgetEngine()),
                 parser = QuickEntryParser(categorizer),
                 categorizer = categorizer,
@@ -69,7 +74,7 @@ class HomeViewModelTest {
             )
             backgroundScope.launch { vm.state.collect {} }
             runCurrent()
-            block(Fixture(vm, budgets, expenses, clock))
+            block(Fixture(vm, budgets, expenses, cards, clock))
             vm.viewModelScope.cancel()
         }
     }
@@ -217,5 +222,48 @@ class HomeViewModelTest {
 
         assertEquals(LocalDate(2025, 1, 14), f.state.today)
         assertEquals(tl(0), f.state.status!!.todaySpent)
+    }
+
+    private suspend fun TestScope.addCard(f: Fixture, name: String): Long {
+        val id = f.cards.add(Card(name = name, carriedBalance = tl(0)))
+        runCurrent()
+        return id
+    }
+
+    @Test
+    fun cardNameInEntry_isRecognizedAndSaved() = testVm { f ->
+        val qnb = addCard(f, "QNB")
+        type(f, "195 market qnb")
+        assertEquals(qnb, f.state.entryCardId)
+
+        save(f)
+
+        val saved = f.expenses.all.value.single()
+        assertEquals(qnb, saved.cardId)
+        assertFalse("qnb" in saved.tokens)
+    }
+
+    @Test
+    fun pickingCash_overridesCardInText() = testVm { f ->
+        addCard(f, "QNB")
+        type(f, "195 market qnb")
+        f.vm.onEvent(HomeEvent.CardPicked(null))
+        assertNull(f.state.entryCardId)
+
+        save(f)
+
+        assertNull(f.expenses.all.value.single().cardId)
+    }
+
+    @Test
+    fun pickingCard_withoutNameInText() = testVm { f ->
+        val bonus = addCard(f, "Bonus")
+        type(f, "80 taksi")
+        f.vm.onEvent(HomeEvent.CardPicked(bonus))
+
+        save(f)
+
+        assertEquals(bonus, f.expenses.all.value.single().cardId)
+        assertNull(f.state.cardOverride) // sonraki kayıt için sıfırlanır
     }
 }

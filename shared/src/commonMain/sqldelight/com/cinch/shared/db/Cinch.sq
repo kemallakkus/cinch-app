@@ -53,7 +53,16 @@ expensesBetween:
 SELECT * FROM expense WHERE date_epoch_day BETWEEN :from AND :to ORDER BY date_epoch_day, id;
 
 expensesForCard:
-SELECT * FROM expense WHERE card_id = ?;
+SELECT * FROM expense WHERE card_id = ? ORDER BY date_epoch_day, id;
+
+expensesForCardBetween:
+SELECT * FROM expense
+WHERE card_id = :cardId AND date_epoch_day BETWEEN :from AND :to
+ORDER BY date_epoch_day, id;
+
+-- Kart silinince harcamalar kalır, nakit sayılır.
+detachExpensesFromCard:
+UPDATE expense SET card_id = NULL WHERE card_id = ?;
 
 deleteExpense:
 DELETE FROM expense WHERE id = ?;
@@ -64,7 +73,18 @@ INSERT INTO card(name, currency, carried_balance_minor, monthly_rate_percent, st
 VALUES (?, ?, ?, ?, ?);
 
 allCards:
-SELECT * FROM card;
+SELECT * FROM card ORDER BY id;
+
+cardById:
+SELECT * FROM card WHERE id = ?;
+
+updateCard:
+UPDATE card
+SET name = ?, carried_balance_minor = ?, monthly_rate_percent = ?, statement_day = ?
+WHERE id = ?;
+
+deleteCard:
+DELETE FROM card WHERE id = ?;
 
 -- ───────── corrections ─────────
 upsertCorrection:

@@ -11,7 +11,9 @@ import com.cinch.shared.coach.PlanCoachWeek
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.reconcile.Reconciler
 import com.cinch.shared.time.LocalClock
 import com.cinch.shared.time.SystemLocalClock
 import org.koin.core.annotation.Configuration
@@ -43,6 +45,12 @@ class DomainModule {
 
     @Single
     fun coachRules(): CoachRules = CoachRules()
+
+    @Single
+    fun reconciler(): Reconciler = Reconciler()
+
+    @Single
+    fun payoffSimulator(): PayoffSimulator = PayoffSimulator()
 
     @Factory
     fun observeBudgetStatus(
