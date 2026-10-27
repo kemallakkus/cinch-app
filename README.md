@@ -6,8 +6,8 @@ Kotlin domain çekirdeğinde yaşar. Veritabanı SQLDelight; para biçimi yerel 
 
 ## Durum
 
-Domain çekirdeği, SQLDelight repository katmanı, Koin DI ve ilk ekran akışı (bütçe kurulumu → ana ekran →
-hızlı kayıt) hazır (**118 birim testi yeşil**: shared 100, composeApp 18).
+Domain çekirdeği, SQLDelight repository katmanı, Koin DI, ilk ekran akışı (bütçe kurulumu → ana ekran →
+hızlı kayıt) ve koç bildirimleri (Android + iOS, izin akışıyla) hazır.
 
 ## Modül yapısı
 
@@ -63,6 +63,22 @@ Navigation 3 (tek geri yığını, `navigation/CinchNavHost.kt`); her ekran `Wra
 `Screen(state, onEvent)` düzeninde. ViewModel'ler `di/UiModule.kt`'de `@KoinViewModel` ile tanımlı ve
 `commonTest`'te sahte repository'lerle test ediliyor. Metinler şimdilik Türkçe ve koda gömülü.
 
+## Koç bildirimleri (`composeApp/.../notifications/`)
+
+`CoachRules` 7 günlük planı üretir; `CoachNotificationSync` bunu platform zamanlayıcısıyla eşit tutar.
+Eşitleme farka göre yapılır: plandan düşen iptal edilir, eksik eklenir, aynısı kalana dokunulmaz.
+Plan şu durumlarda yeniden kurulur: Koin açılışı, bütçe/kart/harcama değişikliği ve uygulamanın öne gelmesi.
+
+| | Android | iOS |
+|---|---|---|
+| Zamanlama | Bildirim başına bir WorkManager işi (`AndroidNotificationScheduler`); yeniden başlatmadan sonra WorkManager geri kurar | `UNCalendarNotificationTrigger` (`IosNotificationScheduler`), en fazla 64 bekleyen |
+| Mesaj | Gösterim anında güncel veriyle yeniden üretilir (`CoachNotificationPlanner.resolveDue`); kural artık geçerli değilse gösterilmez | Eklendiği anda sabit; mesaj değişince bildirim yenilenir |
+| Uygulama açılmazsa | Günlük `CoachReplanWorker` planı ileri taşır | Plan son açılıştaki haliyle kalır (7 gün) |
+| İzin | Android 13+ `POST_NOTIFICATIONS`; bir kez sorulur, sonra ayarlara yönlendirir | `requestAuthorization`; reddedilince ayarlara yönlendirir |
+
+İzin ana ekrandaki karttan, ne işe yarayacağı anlatıldıktan sonra istenir ("Şimdi değil" kartı 7 gün gizler).
+Küçük tercihler (`KeyValueStore`) Android'de SharedPreferences, iOS'ta NSUserDefaults'ta tutulur.
+
 ## Çalıştırma
 
 ```bash
@@ -82,14 +98,14 @@ Navigation 3 (tek geri yığını, `navigation/CinchNavHost.kt`); her ekran `Wra
 ## Araç sürümleri
 
 Kotlin 2.4.21 · AGP 9.4.1 · Compose Multiplatform 1.12.1 · Gradle 9.8.0 · SQLDelight 2.4.1 ·
-Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01
+Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.12.0
 (`gradle/libs.versions.toml`)
 
 ## Sonraki adımlar
 
 - Veritabanı migration'ları (ilk sürüm yayınlanmadan önce; şema şu an `CREATE TABLE IF NOT EXISTS`)
 - Kayıtlı harcamayı düzenleme (tutar/kategori); kart seçimi ve kart ekranı
-- Yerel bildirim planlayıcı (Android `WorkManager` / iOS `UNUserNotificationCenter`)
+- Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - Opsiyonel cihaz içi OCR fiş okuma (ML Kit / Apple Vision)
 - iOS Xcode projesini oluşturma (`iosApp/` Swift kaynakları hazır)
