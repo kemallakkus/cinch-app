@@ -32,6 +32,7 @@ class SqlBudgetAndCardRepositoryTest {
             weeklyLimit = Money.of(150, Currency.EUR),
             weekStart = DayOfWeek.SUNDAY,
             weeklyGoal = Money.of(120, Currency.EUR),
+            salaryDay = 15,
         )
         repo.save(updated)
 

@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS budget_config (
     weekly_limit_minor INTEGER NOT NULL,
     currency TEXT NOT NULL DEFAULT 'TRY',
     week_start_iso INTEGER NOT NULL DEFAULT 1,
-    weekly_goal_minor INTEGER
+    weekly_goal_minor INTEGER,
+    -- Maaşın yattığı gün (1–31); ay kısaysa ayın son günü. Null = ayarlanmadı.
+    salary_day INTEGER
 );
 
 -- ───────── expense ─────────
@@ -76,8 +78,8 @@ SELECT * FROM category_correction;
 
 -- ───────── budget ─────────
 upsertBudget:
-INSERT OR REPLACE INTO budget_config(id, weekly_limit_minor, currency, week_start_iso, weekly_goal_minor)
-VALUES (1, ?, ?, ?, ?);
+INSERT OR REPLACE INTO budget_config(id, weekly_limit_minor, currency, week_start_iso, weekly_goal_minor, salary_day)
+VALUES (1, ?, ?, ?, ?, ?);
 
 currentBudget:
 SELECT * FROM budget_config WHERE id = 1;

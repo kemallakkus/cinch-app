@@ -47,7 +47,7 @@ class BudgetEngineTest {
         assertEquals(5, s.daysRemaining)              // 15→19 dahil
         assertEquals(9000, s.dailyAllowance.minor)    // 45000 / 5
         assertEquals(5000, s.todaySpent.minor)
-        assertEquals(4000, s.todayRemaining.minor)    // 9000 - 5000
+        assertEquals(5000, s.todayRemaining.minor)    // (70000 - 20000) / 5 - 5000
         assertEquals(25000, s.monthTotal.minor)       // Ocak 2025
         assertFalse(s.isOverLimit)
     }
@@ -59,6 +59,15 @@ class BudgetEngineTest {
         val s = engine.status(listOf(exp(today, 1000, 0.5)), try700, today)
         assertEquals(50000, s.weekSpent.minor)
         assertFalse(s.isOverLimit)
+    }
+
+    @Test
+    fun todayRemaining_countsTodaysSpendingOnce() {
+        // Pazartesi, 700 ₺: günlük pay 100. 50 harcayınca bugün 50 kalır (42,86 değil).
+        val today = LocalDate(2025, 1, 13)
+        val s = engine.status(listOf(exp(today, 50)), try700, today)
+        assertEquals(5000, s.todayRemaining.minor)
+        assertEquals(9285, s.dailyAllowance.minor) // 65000 / 7: kalan günlerin payı
     }
 
     @Test

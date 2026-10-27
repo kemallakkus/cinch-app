@@ -105,6 +105,23 @@ class PlanCoachWeekTest {
     }
 
     @Test
+    fun salary_fromBudgetSalaryDay() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700), salaryDay = 15))
+
+        val salary = f.plan(today).filter { it.type == NotificationType.SALARY }
+
+        assertEquals(listOf(LocalDate(2025, 1, 15)), salary.map { it.date })
+    }
+
+    @Test
+    fun salary_noneWithoutSalaryDay() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        assertTrue(f.plan(today).none { it.type == NotificationType.SALARY })
+    }
+
+    @Test
     fun weeklyClosing_followsBudgetWeekStart() = runTest {
         val f = fixture()
         // Hafta Pazar başlıyorsa kapanış Cumartesi; çağıranın CoachConfig'i Pazartesi olsa da.

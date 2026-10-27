@@ -40,9 +40,10 @@ class PlanCoachWeek(
         // Koç kuralları yalnız son lookbackDays günü görür: alışkanlık sayımı "bu dönem" içindir.
         val recent = fetched.filter { it.date in lookbackStart..today }
 
-        // CoachRules ekstreden bir gün önce uyarır; ufkun dışına taşan tarihleri kendisi eler.
+        // CoachRules ufkun dışına taşan tarihleri kendisi eler; bir ay ileri bakmak yeter.
+        val lookahead = today.plus(DatePeriod(months = 1))
         val statementDates = cards.all()
-            .flatMap { it.statementDatesBetween(today, today.plus(DatePeriod(months = 1))) }
+            .flatMap { it.statementDatesBetween(today, lookahead) }
             .distinct()
 
         val input = CoachInput(
@@ -50,7 +51,7 @@ class PlanCoachWeek(
             budget = status,
             expenses = recent,
             statementDates = statementDates,
-            salaryDates = emptyList(), // maaş günü henüz saklanmıyor
+            salaryDates = budget.salaryDatesBetween(today, lookahead),
         )
         // Haftalık kapanış günü bütçenin hafta başlangıcıyla aynı olmalı.
         return rules.planWeek(input, config.copy(weekStart = budget.weekStart))

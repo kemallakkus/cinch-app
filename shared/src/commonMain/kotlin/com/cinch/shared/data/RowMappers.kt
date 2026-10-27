@@ -40,6 +40,7 @@ internal fun BudgetRow.toDomain(): BudgetConfig {
         weeklyLimit = Money(weekly_limit_minor, currency),
         weekStart = DayOfWeek(week_start_iso.toInt()),
         weeklyGoal = weekly_goal_minor?.let { Money(it, currency) },
+        salaryDay = salary_day?.toInt(),
     )
 }
 

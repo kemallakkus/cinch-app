@@ -15,11 +15,13 @@ androidx-activityCompose = "1.12.0"
 
 # Jetbrains / KMP
 jetbrains-lifecycle = "2.11.0"
+jetbrains-navigation3 = "1.2.0-rc01"
 
 # Kotlinx
 kotlinxDatetime = "0.8.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxCollectionsImmutable = "0.5.2"
+kotlinxSerialization = "1.11.0"
 
 # Persistence
 sqldelight = "2.4.1"
@@ -33,10 +35,15 @@ koinCompilerPlugin = "1.2.1"
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
 
 # Compose runtime VM (jetbrains, multiplatform)
 jetbrains-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jetbrains-lifecycle" }
 jetbrains-lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "jetbrains-lifecycle" }
+jetbrains-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "jetbrains-lifecycle" }
+
+# Navigation 3 (multiplatform)
+jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "jetbrains-navigation3" }
 
 # AndroidX
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
@@ -52,9 +59,11 @@ sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", versi
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-annotations = { module = "io.insert-koin:koin-annotations", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
 
 # Test
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 [plugins]
@@ -63,5 +72,6 @@ androidKmpLibrary = { id = "com.android.kotlin.multiplatform.library", version.r
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 koinCompiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koinCompilerPlugin" }

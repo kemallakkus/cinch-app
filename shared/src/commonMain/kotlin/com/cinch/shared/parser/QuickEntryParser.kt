@@ -6,6 +6,7 @@ import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
+import com.cinch.shared.money.MoneyInput
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -91,21 +92,7 @@ class QuickEntryParser(
     }
 
     /** Türkçe öncelikli sayı ayrıştırma: "1.250" → 1250, "120,50" → 120.5, "120.50" → 120.5. */
-    internal fun parseNumber(token: String): Double? {
-        val hasComma = token.contains(',')
-        val hasDot = token.contains('.')
-        val cleaned = when {
-            hasComma && hasDot -> token.replace(".", "").replace(',', '.') // nokta binlik, virgül ondalık
-            hasComma -> token.replace(',', '.')                             // virgül ondalık
-            hasDot -> {
-                val afterDot = token.substringAfterLast('.')
-                if (afterDot.length == 3) token.replace(".", "")            // binlik ayıracı
-                else token                                                   // ondalık
-            }
-            else -> token
-        }
-        return cleaned.toDoubleOrNull()
-    }
+    internal fun parseNumber(token: String): Double? = MoneyInput.parseNumber(token)
 
     // ───────────────────────── Tarih ─────────────────────────
 

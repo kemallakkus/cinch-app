@@ -1,6 +1,7 @@
 package com.cinch.shared.budget
 
 import com.cinch.shared.domain.Expense
+import com.cinch.shared.domain.monthlyDatesBetween
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.minusDays
@@ -18,16 +19,32 @@ import kotlinx.datetime.plus
  * @param weeklyLimit haftalık harcama sınırı.
  * @param weekStart haftanın başladığı gün (varsayılan Pazartesi).
  * @param weeklyGoal opsiyonel haftalık hedef (sınırdan düşük tutma amacı).
+ * @param salaryDay maaşın yattığı gün (1–31); ay kısaysa ayın son günü. Koç o gün hatırlatır.
  */
 data class BudgetConfig(
     val weeklyLimit: Money,
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     val weeklyGoal: Money? = null,
+    val salaryDay: Int? = null,
 ) {
+    init {
+        require(salaryDay == null || salaryDay in 1..31) { "Maaş günü 1–31 arası olmalı: $salaryDay" }
+    }
+
     val currency: Currency get() = weeklyLimit.currency
+
+    /** [from]..[to] (ikisi dahil) aralığına düşen maaş günleri. Maaş günü yoksa boş. */
+    fun salaryDatesBetween(from: LocalDate, to: LocalDate): List<LocalDate> =
+        salaryDay?.let { monthlyDatesBetween(it, from, to) } ?: emptyList()
 }
 
-/** Belirli bir gün için bütçe durumu. Tüm tutarlar config para biriminde. */
+/**
+ * Belirli bir gün için bütçe durumu. Tüm tutarlar config para biriminde.
+ *
+ * - [dailyAllowance]: şu anki kalanın kalan günlere (bugün dahil) eşit payı; sınır aşıldıysa 0.
+ * - [todayRemaining]: bugünün payından (gün başındaki kalana göre) bugün harcanan düşülünce kalan;
+ *   negatifse bugünkü pay aşılmıştır.
+ */
 data class BudgetStatus(
     val weekStart: LocalDate,
     val weekEnd: LocalDate,
@@ -64,9 +81,12 @@ class BudgetEngine {
         val daysRemaining = daysBetweenInclusive(today, weekEnd).coerceAtLeast(1)
 
         // Kalan bütçe, kalan günlere eşit bölünür (negatifse 0).
-        val remainingForSplit = if (weekRemaining.isNegative) Money.zero(currency) else weekRemaining
-        val dailyAllowance = Money(remainingForSplit.minor / daysRemaining, currency)
-        val todayRemaining = dailyAllowance - todaySpent
+        val dailyAllowance = splitOverDays(weekRemaining, daysRemaining)
+
+        // Bugünün payı gün başındaki kalandan hesaplanır. Şu anki kalandan hesaplansaydı bugünkü
+        // harcama iki kez düşerdi: bir kez kalandan, bir kez de paydan.
+        val remainingAtDayStart = weekRemaining + todaySpent
+        val todayRemaining = splitOverDays(remainingAtDayStart, daysRemaining) - todaySpent
 
         val monthTotal = sumChargeable(
             expenses.filter { it.date.year == today.year && it.date.month == today.month },
@@ -91,6 +111,9 @@ class BudgetEngine {
             isOverLimit = weekRemaining.isNegative,
         )
     }
+
+    private fun splitOverDays(amount: Money, days: Int): Money =
+        if (amount.isNegative) Money.zero(amount.currency) else Money(amount.minor / days, amount.currency)
 
     private fun sumChargeable(expenses: List<Expense>, currency: Currency): Money =
         expenses.fold(Money.zero(currency)) { acc, e -> acc + e.chargeableAmount }

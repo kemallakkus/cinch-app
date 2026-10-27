@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.koinCompiler)
 }
 
@@ -16,6 +17,8 @@ kotlin {
         namespace = "com.cinch.app"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
+        // ViewModel testleri commonTest'te; JVM üzerinde androidHostTest olarak koşar.
+        withHostTest {}
     }
 
     // iosX64 yok (bkz. shared/build.gradle.kts notu).
@@ -38,9 +41,20 @@ kotlin {
             implementation(libs.jetbrains.lifecycle.runtime.compose)
             implementation(libs.kotlinx.datetime)
             implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
+            implementation(libs.jetbrains.navigation3.ui)
+            implementation(libs.jetbrains.lifecycle.viewmodel.navigation3)
+            implementation(libs.kotlinx.serialization.core)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(libs.kotlin.test.junit)
         }
     }
 }

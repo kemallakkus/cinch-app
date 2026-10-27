@@ -6,7 +6,8 @@ Kotlin domain çekirdeğinde yaşar. Veritabanı SQLDelight; para biçimi yerel 
 
 ## Durum
 
-Domain çekirdeği, SQLDelight repository katmanı ve Koin DI hazır (**90 birim testi yeşil**).
+Domain çekirdeği, SQLDelight repository katmanı, Koin DI ve ilk ekran akışı (bütçe kurulumu → ana ekran →
+hızlı kayıt) hazır (**118 birim testi yeşil**: shared 100, composeApp 18).
 
 ## Modül yapısı
 
@@ -50,11 +51,26 @@ Koin **annotation tabanlı** ve DSL kullanılmıyor. Modülleri Koin compiler pl
 `CinchApplication` önce `initPlatform(context)` çağırır; iOS'ta `iOSApp.init` Koin'i başlatır.
 Eksik bağımlılık derleme anında hata verir (compile safety).
 
+## Ekranlar (`composeApp/.../`)
+
+| Ekran | Ne yapar | Dosyalar |
+|---|---|---|
+| Bütçe kurulumu | İlk açılışta (bütçe yoksa) açılır; haftalık sınır, hafta başlangıcı, maaş günü. Ana ekrandaki "Bütçe" ile düzenlenir | `ui/budget/` |
+| Ana ekran | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (sola kaydır → sil, "Geri al") | `ui/home/` |
+| Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori önizlenir; kategori düzeltilirse kelime öğrenilir | `ui/home/QuickEntryBar.kt` |
+
+Navigation 3 (tek geri yığını, `navigation/CinchNavHost.kt`); her ekran `Wrapper` (ViewModel + effect) →
+`Screen(state, onEvent)` düzeninde. ViewModel'ler `di/UiModule.kt`'de `@KoinViewModel` ile tanımlı ve
+`commonTest`'te sahte repository'lerle test ediliyor. Metinler şimdilik Türkçe ve koda gömülü.
+
 ## Çalıştırma
 
 ```bash
 # Birim testleri (hızlı, JVM hedefi — Android/iOS derlemesi gerektirmez)
 ./gradlew :shared:jvmTest
+
+# ViewModel testleri (JVM üzerinde Android host test)
+./gradlew :composeApp:testAndroidHostTest
 
 # Android APK
 ./gradlew :androidApp:assembleDebug
@@ -66,14 +82,13 @@ Eksik bağımlılık derleme anında hata verir (compile safety).
 ## Araç sürümleri
 
 Kotlin 2.4.21 · AGP 9.4.1 · Compose Multiplatform 1.12.1 · Gradle 9.8.0 · SQLDelight 2.4.1 ·
-Koin 4.2.2 (compiler plugin 1.2.1)
+Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01
 (`gradle/libs.versions.toml`)
 
 ## Sonraki adımlar
 
-- UI ekranları + navigasyon (ViewModel'ler `@KoinViewModel` ile)
 - Veritabanı migration'ları (ilk sürüm yayınlanmadan önce; şema şu an `CREATE TABLE IF NOT EXISTS`)
-- Maaş günü ayarı (`PlanCoachWeek` şimdilik boş liste veriyor)
+- Kayıtlı harcamayı düzenleme (tutar/kategori); kart seçimi ve kart ekranı
 - Yerel bildirim planlayıcı (Android `WorkManager` / iOS `UNUserNotificationCenter`)
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - Opsiyonel cihaz içi OCR fiş okuma (ML Kit / Apple Vision)
