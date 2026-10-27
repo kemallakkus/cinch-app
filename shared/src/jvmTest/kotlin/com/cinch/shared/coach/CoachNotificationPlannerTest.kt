@@ -5,6 +5,7 @@ import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
 import com.cinch.shared.data.SqlExpenseRepository
+import com.cinch.shared.data.SqlIncomeRepository
 import com.cinch.shared.data.newDatabase
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.AppLocale
@@ -46,7 +47,9 @@ class CoachNotificationPlannerTest {
         val budgets = SqlBudgetRepository(db, io)
         val expenses = SqlExpenseRepository(db, io)
         val clock = FixedClock(LocalDateTime(wednesday, at))
-        val plan = PlanCoachWeek(budgets, expenses, SqlCardRepository(db, io), BudgetEngine(), CoachRules())
+        val plan = PlanCoachWeek(
+            budgets, expenses, SqlCardRepository(db, io), SqlIncomeRepository(db, io), BudgetEngine(), CoachRules(),
+        )
         return Fixture(budgets, expenses, clock, CoachNotificationPlanner(plan, clock))
     }
 

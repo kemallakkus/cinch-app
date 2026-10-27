@@ -51,13 +51,12 @@ class BudgetSetupViewModelTest {
     fun onboarding_savesFormAndFinishes() = testVm { vm, repo ->
         assertTrue(vm.state.value.isOnboarding)
         type(vm.state.value.weeklyLimit, "1.500")
-        type(vm.state.value.salaryDay, "15")
         vm.onEvent(BudgetSetupEvent.WeekStartPicked(DayOfWeek.SUNDAY))
         vm.onEvent(BudgetSetupEvent.Save)
 
         assertEquals(BudgetSetupEffect.Saved, vm.effect.first())
         assertEquals(
-            BudgetConfig(weeklyLimit = tl(1500), weekStart = DayOfWeek.SUNDAY, salaryDay = 15),
+            BudgetConfig(weeklyLimit = tl(1500), weekStart = DayOfWeek.SUNDAY),
             repo.config.value,
         )
     }
@@ -86,31 +85,17 @@ class BudgetSetupViewModelTest {
     }
 
     @Test
-    fun salaryDayOutOfRange_isRejected() = testVm { vm, repo ->
-        type(vm.state.value.weeklyLimit, "700")
-        type(vm.state.value.salaryDay, "40")
-        vm.onEvent(BudgetSetupEvent.Save)
-        runCurrent()
-
-        assertTrue(vm.state.value.salaryDayError)
-        assertFalse(vm.state.value.limitError)
-        assertNull(repo.config.value)
-    }
-
-    @Test
     fun edit_prefillsFormAndKeepsHiddenFields() = testVm(
         existing = BudgetConfig(
             weeklyLimit = tl(700),
             weekStart = DayOfWeek.SUNDAY,
             weeklyGoal = tl(500),
-            salaryDay = 1,
         ),
     ) { vm, repo ->
         val state = vm.state.value
         assertFalse(state.isOnboarding)
         assertFalse(state.isLoading)
         assertEquals("700", state.weeklyLimit.text.toString())
-        assertEquals("1", state.salaryDay.text.toString())
         assertEquals(DayOfWeek.SUNDAY, state.weekStart)
 
         type(state.weeklyLimit, "800")
@@ -118,19 +103,8 @@ class BudgetSetupViewModelTest {
 
         assertEquals(BudgetSetupEffect.Saved, vm.effect.first())
         assertEquals(
-            BudgetConfig(weeklyLimit = tl(800), weekStart = DayOfWeek.SUNDAY, weeklyGoal = tl(500), salaryDay = 1),
+            BudgetConfig(weeklyLimit = tl(800), weekStart = DayOfWeek.SUNDAY, weeklyGoal = tl(500)),
             repo.config.value,
         )
-    }
-
-    @Test
-    fun edit_clearingSalaryDayRemovesIt() = testVm(
-        existing = BudgetConfig(weeklyLimit = tl(700), salaryDay = 15),
-    ) { vm, repo ->
-        type(vm.state.value.salaryDay, "")
-        vm.onEvent(BudgetSetupEvent.Save)
-
-        assertEquals(BudgetSetupEffect.Saved, vm.effect.first())
-        assertNull(repo.config.value?.salaryDay)
     }
 }

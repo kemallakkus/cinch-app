@@ -58,19 +58,18 @@ class CardEditViewModelTest {
 
     @Test
     fun invalidFields_showErrorsAndDoNotSave() = testVm { vm, repo ->
-        type(vm.state.value.statementDay, "40")
         type(vm.state.value.carriedBalance, "abc")
         type(vm.state.value.monthlyRate, "")
         vm.onEvent(CardEditEvent.Save)
         runCurrent()
 
         val state = vm.state.value
-        assertTrue(state.nameError && state.statementDayError && state.balanceError && state.rateError)
+        assertTrue(state.nameError && state.balanceError && state.rateError)
         assertTrue(repo.all.value.isEmpty())
 
         type(state.name, "QNB")
         assertFalse(vm.state.value.nameError)
-        assertTrue(vm.state.value.statementDayError) // diğer alanların hatası kalır
+        assertTrue(vm.state.value.balanceError) // diğer alanların hatası kalır
     }
 
     @Test
@@ -80,12 +79,12 @@ class CardEditViewModelTest {
         val state = vm.state.value
         assertFalse(state.isNew)
         assertEquals("QNB", state.name.text.toString())
-        assertEquals("15", state.statementDay.text.toString())
+        assertEquals(15, state.statementDay)
         assertEquals("12500", state.carriedBalance.text.toString())
         assertEquals("4,25", state.monthlyRate.text.toString())
 
         type(state.carriedBalance, "11.000")
-        type(state.statementDay, "")
+        vm.onEvent(CardEditEvent.StatementDayPicked(null))
         vm.onEvent(CardEditEvent.Save)
 
         assertEquals(CardEditEffect.Saved, vm.effect.first())

@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.navigation.CinchNavHost
 import com.cinch.notifications.CoachNotificationSync
 import com.cinch.ui.root.RootViewModel
@@ -31,7 +32,7 @@ fun App() {
         }
 
         // Başlangıç ekranı belli olana kadar boş arka plan (yerel okuma, göz kırpması kadar sürer).
-        startRoute?.let { CinchNavHost(startRoute = it) }
+        startRoute?.let { CinchNavHost(startWithOnboarding = it is BudgetSetupRoute) }
             ?: Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
     }
 }

@@ -55,14 +55,14 @@ private fun NotificationPromptCard(prompt: NotificationPrompt, onEvent: (Notific
     val config = CoachConfig()
     val (title, body, action) = when (prompt) {
         NotificationPrompt.ASK -> Triple(
-            "Koç seni dürtsün mü?",
+            "🔔 Koç seni dürtsün mü?",
             "Günlük payını, unuttuğun kayıtları ve haftalık özeti bildirimle hatırlatayım. " +
                 "Günde en fazla ${config.maxPerDay} bildirim, " +
                 "${config.quietHours.start}–${config.quietHours.end} arası sessiz.",
             "Bildirimlere izin ver",
         )
         NotificationPrompt.OPEN_SETTINGS -> Triple(
-            "Bildirimler kapalı",
+            "🔕 Bildirimler kapalı",
             "Koçun hatırlatmalarını almak için ayarlardan Cinch bildirimlerini açabilirsin.",
             "Ayarları aç",
         )

@@ -6,6 +6,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,12 +17,11 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun HomeWrapper(
-    onOpenBudget: () -> Unit,
-    onOpenCards: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var confetti by remember { mutableIntStateOf(0) }
 
     LifecycleResumeEffect(viewModel) {
         viewModel.onEvent(HomeEvent.Resumed)
@@ -30,6 +31,7 @@ fun HomeWrapper(
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
             when (effect) {
+                is HomeEffect.EntrySaved -> if (effect.onTrack) confetti++
                 is HomeEffect.ExpenseDeleted -> launch {
                     // Art arda silmede eski snackbar beklemesin; son silinen geri alınabilir.
                     snackbarHostState.currentSnackbarData?.dismiss()
@@ -50,8 +52,7 @@ fun HomeWrapper(
         state = state,
         onEvent = viewModel::onEvent,
         snackbarHostState = snackbarHostState,
-        onOpenBudget = onOpenBudget,
-        onOpenCards = onOpenCards,
+        confettiTrigger = confetti,
         prompt = { NotificationPromptWrapper() },
     )
 }

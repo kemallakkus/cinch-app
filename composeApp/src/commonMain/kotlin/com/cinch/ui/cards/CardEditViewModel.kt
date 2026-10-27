@@ -39,13 +39,13 @@ class CardEditViewModel(
     init {
         route.cardId?.let { id -> viewModelScope.launch { load(id) } }
         clearErrorOnEdit({ it.name }) { it.copy(nameError = false) }
-        clearErrorOnEdit({ it.statementDay }) { it.copy(statementDayError = false) }
         clearErrorOnEdit({ it.carriedBalance }) { it.copy(balanceError = false) }
         clearErrorOnEdit({ it.monthlyRate }) { it.copy(rateError = false) }
     }
 
     fun onEvent(event: CardEditEvent) {
         when (event) {
+            is CardEditEvent.StatementDayPicked -> _state.update { it.copy(statementDay = event.day) }
             CardEditEvent.Save -> save()
             CardEditEvent.DeleteRequested -> _state.update { it.copy(isConfirmingDelete = true) }
             CardEditEvent.DeleteDismissed -> _state.update { it.copy(isConfirmingDelete = false) }
@@ -59,13 +59,12 @@ class CardEditViewModel(
         if (card != null) {
             val s = _state.value
             s.name.setTextAndPlaceCursorAtEnd(card.name)
-            s.statementDay.setTextAndPlaceCursorAtEnd(card.statementDay?.toString().orEmpty())
             s.carriedBalance.setTextAndPlaceCursorAtEnd(
                 if (card.carriedBalance.isZero) "" else card.carriedBalance.toInputText(),
             )
             s.monthlyRate.setTextAndPlaceCursorAtEnd(formatPercent(card.monthlyRatePercent))
         }
-        _state.update { it.copy(isLoading = false) }
+        _state.update { it.copy(isLoading = false, statementDay = card?.statementDay) }
     }
 
     private fun save() {
@@ -74,8 +73,6 @@ class CardEditViewModel(
         val currency = existing?.currency ?: Currency.TRY
 
         val name = current.name.text.toString().trim()
-        val dayText = current.statementDay.text.toString().trim()
-        val statementDay = dayText.toIntOrNull()?.takeIf { it in 1..31 }
         val balanceText = current.carriedBalance.text.toString().trim()
         // Boş borç sıfır demek: ekstresini her ay tam ödeyen kullanıcı için.
         val balance = if (balanceText.isEmpty()) Money.zero(currency) else MoneyInput.parse(balanceText, currency)
@@ -83,11 +80,10 @@ class CardEditViewModel(
 
         val errors = current.copy(
             nameError = name.isEmpty(),
-            statementDayError = dayText.isNotEmpty() && statementDay == null,
             balanceError = balance == null,
             rateError = rate == null,
         )
-        if (errors.nameError || errors.statementDayError || errors.balanceError || errors.rateError) {
+        if (errors.nameError || errors.balanceError || errors.rateError) {
             _state.value = errors
             return
         }
@@ -97,7 +93,7 @@ class CardEditViewModel(
             name = name,
             carriedBalance = balance!!,
             monthlyRatePercent = rate!!,
-            statementDay = statementDay,
+            statementDay = current.statementDay,
         )
         _state.update { it.copy(isSaving = true) }
         viewModelScope.launch {

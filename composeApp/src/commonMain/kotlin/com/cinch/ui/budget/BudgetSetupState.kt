@@ -14,11 +14,9 @@ data class BudgetSetupState(
     val isOnboarding: Boolean,
     val isLoading: Boolean = true,
     val weeklyLimit: TextFieldState = TextFieldState(),
-    val salaryDay: TextFieldState = TextFieldState(),
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     val dailyHint: Money? = null,
     val limitError: Boolean = false,
-    val salaryDayError: Boolean = false,
     val isSaving: Boolean = false,
 )
 

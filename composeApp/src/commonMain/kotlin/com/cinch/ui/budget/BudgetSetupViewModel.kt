@@ -43,11 +43,6 @@ class BudgetSetupViewModel(
                 _state.update { it.copy(dailyHint = daily, limitError = false) }
             }
         }
-        viewModelScope.launch {
-            snapshotFlow { _state.value.salaryDay.text.toString() }.collect {
-                _state.update { it.copy(salaryDayError = false) }
-            }
-        }
     }
 
     fun onEvent(event: BudgetSetupEvent) {
@@ -62,7 +57,6 @@ class BudgetSetupViewModel(
         existing = config
         if (config != null) {
             _state.value.weeklyLimit.setTextAndPlaceCursorAtEnd(config.weeklyLimit.toInputText())
-            config.salaryDay?.let { _state.value.salaryDay.setTextAndPlaceCursorAtEnd(it.toString()) }
         }
         _state.update { it.copy(isLoading = false, weekStart = config?.weekStart ?: it.weekStart) }
     }
@@ -72,16 +66,13 @@ class BudgetSetupViewModel(
         if (current.isLoading || current.isSaving) return
 
         val limit = MoneyInput.parse(current.weeklyLimit.text.toString(), currency)?.takeIf { !it.isZero }
-        val salaryText = current.salaryDay.text.toString().trim()
-        val salaryDay = salaryText.toIntOrNull()?.takeIf { it in 1..31 }
-        val salaryInvalid = salaryText.isNotEmpty() && salaryDay == null
-        if (limit == null || salaryInvalid) {
-            _state.update { it.copy(limitError = limit == null, salaryDayError = salaryInvalid) }
+        if (limit == null) {
+            _state.update { it.copy(limitError = true) }
             return
         }
 
         val config = (existing ?: BudgetConfig(weeklyLimit = limit))
-            .copy(weeklyLimit = limit, weekStart = current.weekStart, salaryDay = salaryDay)
+            .copy(weeklyLimit = limit, weekStart = current.weekStart)
         _state.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {

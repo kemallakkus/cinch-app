@@ -266,4 +266,32 @@ class HomeViewModelTest {
         assertEquals(bonus, f.expenses.all.value.single().cardId)
         assertNull(f.state.cardOverride) // sonraki kayıt için sıfırlanır
     }
+
+    @Test
+    fun saveWithinTodaysShare_celebrates() = testVm { f ->
+        type(f, "50 market") // Pazartesi, 700 ₺: bugünün payı 100
+        save(f)
+        assertEquals(HomeEffect.EntrySaved(onTrack = true), f.vm.effect.first())
+    }
+
+    @Test
+    fun saveOverTodaysShare_doesNotCelebrate() = testVm { f ->
+        type(f, "150 market")
+        save(f)
+        assertEquals(HomeEffect.EntrySaved(onTrack = false), f.vm.effect.first())
+    }
+
+    @Test
+    fun weekDays_showEachDaysShareOfTheWeek() = testVm(today = LocalDate(2025, 1, 15)) { f ->
+        f.expenses.add(Expense(date = monday, grossAmount = tl(100)))
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 14), grossAmount = tl(400), chargeableFraction = 0.5))
+        runCurrent()
+
+        val days = f.state.weekDays
+        assertEquals(7, days.size)
+        assertEquals(1f, days[0].ratio) // 100 / (700 / 7)
+        assertEquals(2f, days[1].ratio) // payı 200
+        assertTrue(days[2].isToday)
+        assertTrue(days[3].isFuture && !days[2].isFuture)
+    }
 }

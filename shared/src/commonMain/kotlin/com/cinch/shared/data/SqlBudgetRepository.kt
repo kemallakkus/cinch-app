@@ -38,7 +38,6 @@ class SqlBudgetRepository(
                 currency = config.currency.code,
                 week_start_iso = config.weekStart.isoDayNumber.toLong(),
                 weekly_goal_minor = config.weeklyGoal?.minor,
-                salary_day = config.salaryDay?.toLong(),
             )
         }
     }

@@ -5,6 +5,8 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.Income
+import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.time.LocalClock
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +81,29 @@ class FakeCardRepository(private val expenses: FakeExpenseRepository? = null) : 
     override suspend fun delete(id: Long) {
         all.update { list -> list.filterNot { it.id == id } }
         expenses?.all?.update { list -> list.map { if (it.cardId == id) it.copy(cardId = null) else it } }
+    }
+}
+
+class FakeIncomeRepository : IncomeRepository {
+    val all = MutableStateFlow<List<Income>>(emptyList())
+    private var nextId = 1L
+
+    override fun observeAll(): Flow<List<Income>> = all
+    override suspend fun all(): List<Income> = all.value
+    override suspend fun get(id: Long): Income? = all.value.firstOrNull { it.id == id }
+
+    override suspend fun add(income: Income): Long {
+        val id = nextId++
+        all.update { it + income.copy(id = id) }
+        return id
+    }
+
+    override suspend fun update(income: Income) {
+        all.update { list -> list.map { if (it.id == income.id) income else it } }
+    }
+
+    override suspend fun delete(id: Long) {
+        all.update { list -> list.filterNot { it.id == id } }
     }
 }
 

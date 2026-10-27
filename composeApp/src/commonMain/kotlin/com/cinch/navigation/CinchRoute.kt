@@ -27,3 +27,13 @@ data class CardEditRoute(val cardId: Long? = null) : CinchRoute
 
 @Serializable
 data class CardDetailRoute(val cardId: Long) : CinchRoute
+
+@Serializable
+data object MonthRoute : CinchRoute
+
+@Serializable
+data object SettingsRoute : CinchRoute
+
+/** @param incomeId düzenlenecek gelir; null ise yeni gelir. */
+@Serializable
+data class IncomeEditRoute(val incomeId: Long? = null) : CinchRoute

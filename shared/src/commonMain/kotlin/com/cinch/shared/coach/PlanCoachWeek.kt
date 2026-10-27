@@ -5,6 +5,8 @@ import com.cinch.shared.budget.inCurrencyOf
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.parser.minusDays
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -20,6 +22,7 @@ class PlanCoachWeek(
     private val budgets: BudgetRepository,
     private val expenses: ExpenseRepository,
     private val cards: CardRepository,
+    private val incomes: IncomeRepository,
     private val engine: BudgetEngine,
     private val rules: CoachRules,
     private val lookbackDays: Int = 30,
@@ -51,9 +54,20 @@ class PlanCoachWeek(
             budget = status,
             expenses = recent,
             statementDates = statementDates,
-            salaryDates = budget.salaryDatesBetween(today, lookahead),
+            salaryDates = salaryDates(budget, today, lookahead),
         )
         // Haftalık kapanış günü bütçenin hafta başlangıcıyla aynı olmalı.
         return rules.planWeek(input, config.copy(weekStart = budget.weekStart))
     }
+
+    /**
+     * Maaş bildirimi en büyük düzenli gelirin gününe bağlanır: mesaj "Maaş günü" der, kira geliri gibi
+     * ek gelirler için uygun değil.
+     */
+    private suspend fun salaryDates(budget: BudgetConfig, from: LocalDate, to: LocalDate): List<LocalDate> =
+        incomes.all()
+            .filter { it.dayOfMonth != null && it.currency == budget.currency }
+            .maxByOrNull { it.amount.minor }
+            ?.paydaysBetween(from, to)
+            .orEmpty()
 }

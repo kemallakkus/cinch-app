@@ -1,0 +1,15 @@
+-- Sürüm 1 → 2: düzenli gelirler.
+-- Bütçedeki tek "maaş günü" gelir listesine "Maaş" olarak taşınır; tutarını kullanıcı girer.
+
+CREATE TABLE IF NOT EXISTS income (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    amount_minor INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    day_of_month INTEGER
+);
+
+INSERT INTO income(name, amount_minor, currency, day_of_month)
+SELECT 'Maaş', 0, currency, salary_day FROM budget_config WHERE salary_day IS NOT NULL;
+
+UPDATE budget_config SET salary_day = NULL;

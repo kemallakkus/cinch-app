@@ -8,7 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -16,8 +17,12 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -41,16 +46,21 @@ import com.cinch.ui.common.display
 import com.cinch.ui.common.emoji
 import com.cinch.ui.common.label
 import com.cinch.ui.common.relativeLabel
+import com.cinch.ui.theme.colors
 import kotlin.math.roundToInt
 
 /** Ekranın altındaki kayıt alanı: klavye açılınca onunla birlikte yukarı çıkar. */
 @Composable
 fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shadowElevation = 8.dp,
+    ) {
         Column(
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             state.parsed?.let { parsed ->
@@ -66,7 +76,8 @@ fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
                 OutlinedTextField(
                     state = state.entry,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("195 market") },
+                    shape = RoundedCornerShape(28.dp),
+                    placeholder = { Text("Ne harcadın? ör. 195 market") },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
                         imeAction = ImeAction.Done,
@@ -74,12 +85,12 @@ fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
                     onKeyboardAction = { if (state.canSave) onEvent(HomeEvent.SaveEntry) },
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
-                Button(
+                FilledIconButton(
                     onClick = { onEvent(HomeEvent.SaveEntry) },
                     enabled = state.canSave,
-                    modifier = Modifier.height(56.dp),
+                    modifier = Modifier.size(56.dp),
                 ) {
-                    Text("Ekle")
+                    Icon(Icons.Rounded.Add, contentDescription = "Ekle")
                 }
             }
         }
@@ -103,8 +114,8 @@ private fun EntryPreview(
     ) {
         val amount = parsed.chargeableAmount
         Text(
-            amount?.display() ?: "Tutar yaz",
-            style = MaterialTheme.typography.titleMedium,
+            amount?.display() ?: "Tutarı da yaz",
+            style = MaterialTheme.typography.titleLarge,
             color = if (amount == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
         )
         CategoryPicker(selected = category, onPick = onPick)
@@ -131,9 +142,12 @@ private fun EntryPreview(
 private fun CategoryPicker(selected: Category, onPick: (Category) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
+        val colors = selected.colors()
         AssistChip(
             onClick = { expanded = true },
             label = { Text("${selected.emoji} ${selected.label} ▾") },
+            colors = AssistChipDefaults.assistChipColors(containerColor = colors.container, labelColor = colors.content),
+            border = null,
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             Category.entries.forEach { category ->

@@ -39,11 +39,12 @@ cinch-app/
 
 | Bileşen | Sorumluluk | Dosya |
 |---|---|---|
-| `ExpenseRepository` / `CardRepository` / `BudgetRepository` | Arayüzler; tarih aralıkları iki uç dahil, `observe*` Flow döner | `domain/repository/` |
+| `ExpenseRepository` / `CardRepository` / `BudgetRepository` / `IncomeRepository` | Arayüzler; tarih aralıkları iki uç dahil, `observe*` Flow döner | `domain/repository/` |
 | `Sql*Repository` | SQLDelight implementasyonları; tarih epoch-day, tutar kuruş saklanır | `data/` |
 | `SqlCorrectionStore` | Kategori düzeltmelerini kalıcı tutar (ilk erişimde belleğe alınır) | `data/` |
 | `ObserveBudgetStatus` | Bütçe + harcamaları izler, `BudgetEngine` ile canlı `BudgetStatus` yayar | `budget/` |
-| `PlanCoachWeek` | Bütçe, son 30 gün ve kart ekstre günlerinden `CoachRules` planını üretir | `coach/` |
+| `ObserveMonthSummary` | Bu ayın gelir − harcama özeti ve sonraki gelir günü | `budget/` |
+| `PlanCoachWeek` | Bütçe, son 30 gün, kart hesap kesim günleri ve en büyük gelirin gününden `CoachRules` planını üretir | `coach/` |
 | `DataModule` / `DomainModule` / `PlatformModule` | Koin modülleri (annotation, `@Configuration`) | `di/` |
 
 Koin **annotation tabanlı** ve DSL kullanılmıyor. Modülleri Koin compiler plugin topluyor, KSP gerekmiyor. Giriş noktası
@@ -51,17 +52,36 @@ Koin **annotation tabanlı** ve DSL kullanılmıyor. Modülleri Koin compiler pl
 `CinchApplication` önce `initPlatform(context)` çağırır; iOS'ta `iOSApp.init` Koin'i başlatır.
 Eksik bağımlılık derleme anında hata verir (compile safety).
 
+**Şema sürümleri:** `Cinch.sq` güncel şemadır; her değişiklik ayrıca `<eski sürüm>.sqm` dosyasına migration
+olarak yazılır (`1.sqm`: gelir tablosu, bütçedeki maaş günü "Maaş" gelirine taşınır). Telefondaki eski
+kurulum açılışta veri kaybetmeden yükseltilir; `MigrationTest` bunu doğrular. Yeni şema değişikliğinde
+`2.sqm` eklenir, `Cinch.sq` güncellenir.
+
 ## Ekranlar (`composeApp/.../`)
+
+Alt menüde dört sekme var: **Bugün**, **Bu ay**, **Kartlar**, **Ayarlar**. Her sekmenin kendi geri yığını var;
+sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde görünür.
 
 | Ekran | Ne yapar | Dosyalar |
 |---|---|---|
-| Bütçe kurulumu | İlk açılışta (bütçe yoksa) açılır; haftalık sınır, hafta başlangıcı, maaş günü. Ana ekrandaki "Bütçe" ile düzenlenir | `ui/budget/` |
-| Ana ekran | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (sola kaydır → sil, "Geri al") | `ui/home/` |
+| Bütçe kurulumu | İlk açılışta (bütçe yoksa) alt menüsüz açılır; haftalık harcama sınırı ve hafta başlangıcı. Sonra Ayarlar'dan düzenlenir | `ui/budget/` |
+| Bugün | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (sola kaydır → sil, "Geri al") | `ui/home/` |
+| Bu ay | Gelir − harcama = elinde kalan; sonraki gelire kaç gün kaldığı; gelir listesi ve gelir ekleme/düzenleme | `ui/month/` |
+| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu | `ui/settings/` |
 | Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir | `ui/home/QuickEntryBar.kt` |
-| Kartlar | Kart listesi; ekleme/düzenleme (ad, ekstre günü, devreden borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
-| Kart detayı | Bu ekstre dönemi toplamı; mutabakat (bankadaki dönem içi tutar ↔ kayıtlar, eksik farkı tek dokunuşla ekleme); devreden borcun aylık ödemeyle kapanış süresi ve toplam faizi | `ui/cards/CardDetail*` |
+| Kartlar | Kart listesi; ekleme/düzenleme (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
+| Kart detayı | Bu ekstreye girecek harcamalar; "bankayla karşılaştır" (eksik farkı tek dokunuşla ekleme); eski borcun aylık ödemeyle ne zaman biteceği ve toplam faizi | `ui/cards/CardDetail*` |
 
-Navigation 3 (tek geri yığını, `navigation/CinchNavHost.kt`); her ekran `Wrapper` (ViewModel + effect) →
+**Görünüm (sıcak ve oyunsu):** krem zemin, mercan/şeftali vurgular; nane yeşili "iyi gidiyorsun", bal sarısı
+"dikkat". Büyük yuvarlak köşeler, her kategoriye kendi pastel rengi, ana rakamlar degrade kartlarda ve değişince
+sayarak akar. Bugün ekranında haftanın 7 günü için küçük çubuklar (günün harcaması / haftalık sınırın yedide biri).
+Kayıt payın içinde kalınca ve bankayla karşılaştırma tutunca küçük bir konfeti patlar. Tema `ui/theme/CinchTheme.kt`
+(`CinchTheme.colors`, `Category.colors()`), oyunsu parçalar `ui/common/Playful.kt` ve `Celebration.kt`.
+
+Teknik terimler ekranda sade dille yazılır; gerektiğinde yanındaki "i" balonu açıklar (`ui/common/Components.kt`:
+`InfoTip`, ayın günü için takvim ızgarası `DayOfMonthField`).
+
+Navigation 3 (sekme başına geri yığını, `navigation/CinchNavHost.kt`); her ekran `Wrapper` (ViewModel + effect) →
 `Screen(state, onEvent)` düzeninde. ViewModel'ler `di/UiModule.kt`'de `@KoinViewModel` ile tanımlı ve
 `commonTest`'te sahte repository'lerle test ediliyor. Metinler şimdilik Türkçe ve koda gömülü.
 
@@ -100,12 +120,13 @@ Küçük tercihler (`KeyValueStore`) Android'de SharedPreferences, iOS'ta NSUser
 ## Araç sürümleri
 
 Kotlin 2.4.21 · AGP 9.4.1 · Compose Multiplatform 1.12.1 · Gradle 9.8.0 · SQLDelight 2.4.1 ·
-Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.12.0
+Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.12.0 · Material ikonları 1.7.3
 (`gradle/libs.versions.toml`)
 
 ## Sonraki adımlar
 
-- Veritabanı migration'ları (ilk sürüm yayınlanmadan önce; şema şu an `CREATE TABLE IF NOT EXISTS`)
+- İlk açılışta ekranı tanıtan odaklı balonlar (coach mark); yuvarlak hatlı özel yazı tipi (ör. Nunito)
+- Harcama tarihini takvimden seçme; bildirim saatlerini (sessiz saatler) saat seçiciyle ayarlama
 - Kayıtlı harcamayı düzenleme (tutar/kategori/kart)
 - Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)

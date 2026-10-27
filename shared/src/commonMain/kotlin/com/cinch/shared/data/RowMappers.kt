@@ -4,6 +4,7 @@ import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
+import com.cinch.shared.domain.Income
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.datetime.DayOfWeek
@@ -11,6 +12,7 @@ import kotlinx.datetime.LocalDate
 import com.cinch.shared.db.Budget_config as BudgetRow
 import com.cinch.shared.db.Card as CardRow
 import com.cinch.shared.db.Expense as ExpenseRow
+import com.cinch.shared.db.Income as IncomeRow
 
 // SQLDelight satırları ↔ domain modelleri. Tarih epoch-day, tutar kuruş olarak saklanır.
 
@@ -24,6 +26,13 @@ internal fun ExpenseRow.toDomain(): Expense = Expense(
     note = note,
     tokens = decodeTokens(tokens),
     rawText = raw_text,
+)
+
+internal fun IncomeRow.toDomain(): Income = Income(
+    id = id,
+    name = name,
+    amount = Money(amount_minor, Currency.fromCode(currency)),
+    dayOfMonth = day_of_month?.toInt(),
 )
 
 internal fun CardRow.toDomain(): Card = Card(
@@ -40,7 +49,6 @@ internal fun BudgetRow.toDomain(): BudgetConfig {
         weeklyLimit = Money(weekly_limit_minor, currency),
         weekStart = DayOfWeek(week_start_iso.toInt()),
         weeklyGoal = weekly_goal_minor?.let { Money(it, currency) },
-        salaryDay = salary_day?.toInt(),
     )
 }
 

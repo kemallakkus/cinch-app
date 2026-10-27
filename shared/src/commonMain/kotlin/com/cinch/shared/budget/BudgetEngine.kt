@@ -1,7 +1,6 @@
 package com.cinch.shared.budget
 
 import com.cinch.shared.domain.Expense
-import com.cinch.shared.domain.monthlyDatesBetween
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.minusDays
@@ -19,23 +18,13 @@ import kotlinx.datetime.plus
  * @param weeklyLimit haftalık harcama sınırı.
  * @param weekStart haftanın başladığı gün (varsayılan Pazartesi).
  * @param weeklyGoal opsiyonel haftalık hedef (sınırdan düşük tutma amacı).
- * @param salaryDay maaşın yattığı gün (1–31); ay kısaysa ayın son günü. Koç o gün hatırlatır.
  */
 data class BudgetConfig(
     val weeklyLimit: Money,
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     val weeklyGoal: Money? = null,
-    val salaryDay: Int? = null,
 ) {
-    init {
-        require(salaryDay == null || salaryDay in 1..31) { "Maaş günü 1–31 arası olmalı: $salaryDay" }
-    }
-
     val currency: Currency get() = weeklyLimit.currency
-
-    /** [from]..[to] (ikisi dahil) aralığına düşen maaş günleri. Maaş günü yoksa boş. */
-    fun salaryDatesBetween(from: LocalDate, to: LocalDate): List<LocalDate> =
-        salaryDay?.let { monthlyDatesBetween(it, from, to) } ?: emptyList()
 }
 
 /**

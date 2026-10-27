@@ -6,7 +6,10 @@ import com.cinch.shared.budget.BudgetStatus
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
+import com.cinch.shared.money.Money
 import com.cinch.shared.parser.ParsedEntry
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
 import kotlinx.datetime.LocalDate
 
 /**
@@ -37,6 +40,37 @@ data class HomeState(
 
     val canSave: Boolean
         get() = !isSaving && parsed?.grossAmount?.let { !it.isZero && !it.isNegative } == true
+
+    /** Bütçe haftasının 7 günü ve her gün harcanan (kullanıcının payı); hafta çubukları için. */
+    val weekDays: List<DaySpend>
+        get() {
+            val s = status ?: return emptyList()
+            val currency = s.weeklyLimit.currency
+            val fairShare = Money(s.weeklyLimit.minor / 7, currency)
+            return (0 until 7).map { offset ->
+                val date = s.weekStart.plus(DatePeriod(days = offset))
+                val spent = Money.sum(
+                    weekExpenses.filter { it.date == date && it.grossAmount.currency == currency }.map { it.chargeableAmount },
+                    currency,
+                )
+                DaySpend(date = date, spent = spent, fairShare = fairShare, isToday = date == today, isFuture = date > today)
+            }
+        }
+}
+
+/**
+ * @param fairShare haftalık sınırın yedide biri: günün "adil payı".
+ */
+@Immutable
+data class DaySpend(
+    val date: LocalDate,
+    val spent: Money,
+    val fairShare: Money,
+    val isToday: Boolean,
+    val isFuture: Boolean,
+) {
+    /** Harcamanın adil paya oranı (1 = tam payı kadar). */
+    val ratio: Float get() = if (fairShare.isZero) 0f else spent.minor.toFloat() / fairShare.minor.toFloat()
 }
 
 /** Elle yapılan kart seçimi. [cardId] null = nakit (metinde kart adı geçse bile). */
@@ -53,6 +87,9 @@ sealed interface HomeEvent {
 }
 
 sealed interface HomeEffect {
+    /** Kayıt eklendi. [onTrack] = eklendikten sonra hâlâ payın içindesin: küçük bir kutlama yapılır. */
+    data class EntrySaved(val onTrack: Boolean) : HomeEffect
+
     /** Snackbar'da "Geri al" sunulur. */
     data class ExpenseDeleted(val expense: Expense) : HomeEffect
 }

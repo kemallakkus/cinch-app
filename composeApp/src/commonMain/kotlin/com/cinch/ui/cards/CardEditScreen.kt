@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.maxLength
-import androidx.compose.foundation.text.input.then
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -30,10 +29,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-
-private val digitsOnly = InputTransformation {
-    if (!asCharSequence().all { it.isDigit() }) revertAllChanges()
-}
+import com.cinch.ui.common.BackButton
+import com.cinch.ui.common.DayOfMonthField
+import com.cinch.ui.common.InfoTip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +44,7 @@ fun CardEditScreen(
         topBar = {
             TopAppBar(
                 title = { Text(if (state.isNew) "Kart ekle" else "Kartı düzenle") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Geri") } },
+                navigationIcon = { BackButton(onBack) },
             )
         },
     ) { padding ->
@@ -63,13 +61,13 @@ fun CardEditScreen(
                 state = state.name,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoading,
-                label = { Text("Kart adı") },
-                placeholder = { Text("ör. QNB, Akbank Axess") },
+                label = { Text("Kartın adı") },
+                placeholder = { Text("ör. QNB, Axess") },
                 isError = state.nameError,
                 supportingText = {
                     Text(
                         if (state.nameError) "Bir ad yaz"
-                        else "Hızlı kayıtta bu adı yazınca harcama bu karta bağlanır",
+                        else "Harcarken bu adı yazarsan (\"195 market qnb\") harcama bu karta yazılır",
                     )
                 },
                 inputTransformation = InputTransformation.maxLength(40),
@@ -77,37 +75,32 @@ fun CardEditScreen(
                 lineLimits = TextFieldLineLimits.SingleLine,
             )
 
-            OutlinedTextField(
-                state = state.statementDay,
-                modifier = Modifier.fillMaxWidth(),
+            DayOfMonthField(
+                label = "Hesap kesim günü (isteğe bağlı)",
+                day = state.statementDay,
+                onPick = { onEvent(CardEditEvent.StatementDayPicked(it)) },
                 enabled = !state.isLoading,
-                label = { Text("Ekstre günü (isteğe bağlı)") },
-                placeholder = { Text("ör. 15") },
-                isError = state.statementDayError,
-                supportingText = {
-                    Text(
-                        if (state.statementDayError) "1 ile 31 arasında bir gün yaz"
-                        else "Koç bir gün önceden hatırlatır; mutabakat dönemi buna göre hesaplanır",
-                    )
-                },
-                inputTransformation = InputTransformation.maxLength(2).then(digitsOnly),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                lineLimits = TextFieldLineLimits.SingleLine,
+                supportingText = "Bankanın o ayın harcamalarını topladığı gün. Bir gün önce hatırlatırız.",
+                modifier = Modifier.fillMaxWidth(),
             )
 
             OutlinedTextField(
                 state = state.carriedBalance,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoading,
-                label = { Text("Devreden borç (isteğe bağlı)") },
+                label = { Text("Ödenmemiş eski borç (isteğe bağlı)") },
                 placeholder = { Text("0") },
                 suffix = { Text("₺") },
+                trailingIcon = {
+                    InfoTip(
+                        title = "Ödenmemiş eski borç",
+                        text = "Geçmiş ekstrelerin tamamını ödemediysen kalan kısım kartta borç olarak durur ve " +
+                            "her ay faiz işler. Ekstrenin tamamını her ay ödüyorsan boş bırak.",
+                    )
+                },
                 isError = state.balanceError,
                 supportingText = {
-                    Text(
-                        if (state.balanceError) "Geçerli bir tutar yaz (ör. 12.500)"
-                        else "Önceki ekstrelerden ödenmeden kalan borç; her ay tam ödüyorsan boş bırak",
-                    )
+                    Text(if (state.balanceError) "Geçerli bir tutar yaz (ör. 12.500)" else "Bu ayın harcamaları buraya girmez")
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 lineLimits = TextFieldLineLimits.SingleLine,
@@ -117,12 +110,17 @@ fun CardEditScreen(
                 state = state.monthlyRate,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoading,
-                label = { Text("Aylık faiz (vergiler dahil)") },
+                label = { Text("Aylık faiz oranı") },
                 prefix = { Text("%") },
-                isError = state.rateError,
-                supportingText = {
-                    Text(if (state.rateError) "0 ile 100 arasında bir oran yaz (ör. 4,9)" else "Ekstrede yazan akdi faiz + vergiler")
+                trailingIcon = {
+                    InfoTip(
+                        title = "Aylık faiz oranı",
+                        text = "Ekstrende \"akdi faiz\" diye yazar. Vergilerle birlikte genelde %4–5 civarıdır; " +
+                            "emin değilsen olduğu gibi bırak.",
+                    )
                 },
+                isError = state.rateError,
+                supportingText = { if (state.rateError) Text("0 ile 100 arasında bir oran yaz (ör. 4,9)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                 onKeyboardAction = { onEvent(CardEditEvent.Save) },
                 lineLimits = TextFieldLineLimits.SingleLine,
@@ -153,7 +151,7 @@ fun CardEditScreen(
         AlertDialog(
             onDismissRequest = { onEvent(CardEditEvent.DeleteDismissed) },
             title = { Text("Kart silinsin mi?") },
-            text = { Text("Bu karta bağlı harcamalar silinmez, nakit olarak kalır.") },
+            text = { Text("Bu kartla yaptığın harcamalar silinmez, nakit harcama olarak kalır.") },
             confirmButton = {
                 TextButton(onClick = { onEvent(CardEditEvent.DeleteConfirmed) }) {
                     Text("Sil", color = MaterialTheme.colorScheme.error)

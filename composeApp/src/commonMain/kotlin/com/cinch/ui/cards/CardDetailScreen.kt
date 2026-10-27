@@ -20,6 +20,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -28,8 +29,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -39,8 +46,12 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Money
 import com.cinch.shared.reconcile.ReconciliationKind
 import com.cinch.shared.reconcile.ReconciliationResult
+import com.cinch.ui.common.BackButton
+import com.cinch.ui.common.CategoryBadge
+import com.cinch.ui.common.ConfettiBurst
+import com.cinch.ui.common.TitleWithInfo
+import com.cinch.ui.common.dayOfMonthLabel
 import com.cinch.ui.common.display
-import com.cinch.ui.common.emoji
 import com.cinch.ui.common.formatPercent
 import com.cinch.ui.common.label
 import com.cinch.ui.common.relativeLabel
@@ -56,38 +67,47 @@ fun CardDetailScreen(
     onEdit: () -> Unit,
 ) {
     val card = state.card
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(card?.name ?: "Kart") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Geri") } },
-                actions = { if (card != null) TextButton(onClick = onEdit) { Text("Düzenle") } },
-            )
-        },
-    ) { padding ->
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            card == null -> Box(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
-                Text("Bu kart artık yok.")
-            }
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).imePadding(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item(key = "period") { PeriodCard(card, state) }
-                item(key = "reconcile") { ReconcileSection(state, onEvent) }
-                item(key = "payoff") { PayoffSection(card, state) }
-                if (state.periodExpenses.isNotEmpty()) {
-                    item(key = "expensesHeader") {
-                        Text("Bu dönemin harcamaları", style = MaterialTheme.typography.titleMedium)
+    // Bankayla tuttuğunda (ya da eksik fark eklenip tutunca) küçük bir kutlama.
+    var confetti by remember { mutableIntStateOf(0) }
+    LaunchedEffect(state.reconciliation) {
+        if (state.reconciliation?.kind == ReconciliationKind.MATCH) confetti++
+    }
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(card?.name ?: "Kart") },
+                    navigationIcon = { BackButton(onBack) },
+                    actions = { if (card != null) TextButton(onClick = onEdit) { Text("Düzenle") } },
+                )
+            },
+        ) { padding ->
+            when {
+                state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+                card == null -> Box(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
+                    Text("Bu kart artık yok.")
+                }
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding).imePadding(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item(key = "tile") { CardTile(card) }
+                    item(key = "period") { PeriodCard(card, state) }
+                    item(key = "reconcile") { ReconcileSection(state, onEvent) }
+                    item(key = "payoff") { PayoffSection(card, state) }
+                    if (state.periodExpenses.isNotEmpty()) {
+                        item(key = "expensesHeader") {
+                            Text("Bu dönemin harcamaları", style = MaterialTheme.typography.titleMedium)
+                        }
+                        items(state.periodExpenses, key = { it.id }) { ExpenseLine(it, state.today) }
                     }
-                    items(state.periodExpenses, key = { it.id }) { ExpenseLine(it, state.today) }
                 }
             }
         }
+        ConfettiBurst(trigger = confetti, originY = 0.5f)
     }
 }
 
@@ -95,23 +115,18 @@ fun CardDetailScreen(
 private fun PeriodCard(card: CreditCard, state: CardDetailState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             val period = state.period
-            Text(
-                if (period == null) "Bu dönem" else "Bu dönem · ${period.start.shortLabel()} – ${period.endInclusive.shortLabel()}",
-                style = MaterialTheme.typography.labelLarge,
-            )
+            Text("Bu ekstreye girecek harcamalar", style = MaterialTheme.typography.labelLarge)
             Text((state.periodTotal ?: Money.zero(card.currency)).display(), style = MaterialTheme.typography.displaySmall)
-            val details = buildList {
-                add(card.statementDay?.let { "Ekstre günü: $it" } ?: "Ekstre günü yok, dönem ayın başından")
-                add("Faiz %${formatPercent(card.monthlyRatePercent)}")
-            }
-            Text(details.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            val range = period?.let { "${it.start.shortLabel()} – ${it.endInclusive.shortLabel()}" }.orEmpty()
+            Text(
+                if (card.statementDay != null) "$range · hesap kesim ${dayOfMonthLabel(card.statementDay).lowercase()}"
+                else "$range · hesap kesim günü girilmedi, ayın başından sayıyoruz",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }
@@ -119,8 +134,10 @@ private fun PeriodCard(card: CreditCard, state: CardDetailState) {
 @Composable
 private fun ReconcileSection(state: CardDetailState, onEvent: (CardDetailEvent) -> Unit) {
     Section(
-        title = "Mutabakat",
-        description = "Banka uygulamasındaki dönem içi harcamayı yaz; kayıtlarınla karşılaştırayım.",
+        title = "Bankayla karşılaştır",
+        description = "Banka uygulamandaki \"dönem içi harcama\" tutarını yaz; buraya girdiklerinle tutuyor mu bakalım.",
+        info = "Banka, hesap kesim gününden beri kartla yaptığın harcamaları toplar. O toplamı Cinch'e girdiğin " +
+            "harcamalarla karşılaştırırız; fark varsa bir harcamayı yazmayı unutmuş olabilirsin.",
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -147,16 +164,16 @@ private fun ReconcileSection(state: CardDetailState, onEvent: (CardDetailEvent) 
 @Composable
 private fun ReconcileResult(result: ReconciliationResult, onEvent: (CardDetailEvent) -> Unit) {
     when (result.kind) {
-        ReconciliationKind.MATCH -> Text("Kayıtların bankayla tutuyor 👍", style = MaterialTheme.typography.titleSmall)
+        ReconciliationKind.MATCH -> Text("Tutuyor, her şeyi yazmışsın 👍", style = MaterialTheme.typography.titleSmall)
         ReconciliationKind.MISSING_EXPENSE -> {
             Text(
-                "${result.difference.display()} yazmayı unutmuşsun.",
+                "${result.difference.display()} tutarında harcama yazılmamış görünüyor.",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
             Text(
-                "Kayıtlarda ${result.recordedTotal.display()}, bankada ${result.statedActual.display()} var. " +
-                    "Hatırlamıyorsan farkı tek kayıt olarak ekleyebilirsin; bütçene de sayılır.",
+                "Sen ${result.recordedTotal.display()} yazmışsın, banka ${result.statedActual.display()} diyor. " +
+                    "Neye harcadığını hatırlamıyorsan farkı tek seferde ekleyebilirsin; bütçene de sayılır.",
                 style = MaterialTheme.typography.bodySmall,
             )
             OutlinedButton(onClick = { onEvent(CardDetailEvent.AddMissingDifference) }) {
@@ -165,13 +182,13 @@ private fun ReconcileResult(result: ReconciliationResult, onEvent: (CardDetailEv
         }
         ReconciliationKind.EXTRA_RECORDED -> {
             Text(
-                "Kayıtların bankadan ${result.difference.absolute.display()} fazla.",
+                "Yazdıkların bankadakinden ${result.difference.absolute.display()} fazla.",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
             Text(
-                "Yanlış karta, yanlış tutarla ya da iki kez girilmiş bir kayıt olabilir. " +
-                    "Banka henüz işlememiş bir harcama da olabilir.",
+                "Bir harcama iki kez, yanlış tutarla ya da yanlış karta yazılmış olabilir. " +
+                    "Bazen banka bir harcamayı birkaç gün sonra gösterir; o zaman beklemek yeter.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -182,20 +199,22 @@ private fun ReconcileResult(result: ReconciliationResult, onEvent: (CardDetailEv
 private fun PayoffSection(card: CreditCard, state: CardDetailState) {
     if (card.carriedBalance.isZero) {
         Section(
-            title = "Borç kapanışı",
-            description = "Devreden borç yok. Ekstreyi her ay tam ödedikçe faiz ödemezsin.",
+            title = "Borcun ne zaman biter?",
+            description = "Bu kartta ödenmemiş eski borç yok 🎉 Ekstrenin tamamını her ay ödedikçe faiz ödemezsin.",
         ) {}
         return
     }
     Section(
-        title = "Borç kapanışı",
-        description = "Devreden borç ${card.carriedBalance.display()}, aylık %${formatPercent(card.monthlyRatePercent)} faiz. " +
-            "Her ay ne kadar ödersen ne zaman biter?",
+        title = "Borcun ne zaman biter?",
+        description = "Kartta ${card.carriedBalance.display()} ödenmemiş eski borç var ve her ay " +
+            "%${formatPercent(card.monthlyRatePercent)} faiz ekleniyor. Her ay ne kadar ödersen ne zaman biter, bak:",
+        info = "Kartın borcunun tamamını ödemezsen kalan kısma faiz eklenir. Aynı tutarı her ay ödediğini " +
+            "varsayıp borcun kaç ayda biteceğini ve toplam ne kadar faiz ödeyeceğini hesaplıyoruz.",
     ) {
         OutlinedTextField(
             state = state.monthlyPayment,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Aylık ödeme") },
+            label = { Text("Her ay ödeyeceğin tutar") },
             suffix = { Text("₺") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             lineLimits = TextFieldLineLimits.SingleLine,
@@ -208,21 +227,21 @@ private fun PayoffSection(card: CreditCard, state: CardDetailState) {
 private fun PayoffResult(result: CardPayoffResult, firstMonthInterest: Money?) {
     if (!result.closes) {
         Text(
-            "Bu ödemeyle borç hiç kapanmaz.",
+            "Bu ödemeyle borç hiç bitmez.",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.error,
         )
         firstMonthInterest?.let {
             Text(
-                "Aylık faiz ${it.display()}; ödeme bunun üstünde olmalı, yoksa borç küçülmez.",
+                "Her ay ${it.display()} faiz ekleniyor; borcun azalması için bundan fazla ödemelisin.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
         return
     }
-    Text("${durationLabel(result.months)} kapanır", style = MaterialTheme.typography.titleSmall)
+    Text("Borç ${durationLabel(result.months)} biter", style = MaterialTheme.typography.titleSmall)
     Text(
-        "Toplam faiz ${result.totalInterest.display()} · toplam ödeme ${result.totalPaid.display()}",
+        "Bu sürede ${result.totalInterest.display()} faiz ödersin (toplam ${result.totalPaid.display()}).",
         style = MaterialTheme.typography.bodySmall,
     )
 }
@@ -239,13 +258,14 @@ private fun durationLabel(months: Int): String {
 }
 
 @Composable
-private fun Section(title: String, description: String, content: @Composable () -> Unit) {
+private fun Section(title: String, description: String, info: String? = null, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            if (info != null) TitleWithInfo(title = title, info = info)
+            else Text(title, style = MaterialTheme.typography.titleMedium)
             Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             content()
         }
@@ -255,7 +275,9 @@ private fun Section(title: String, description: String, content: @Composable () 
 @Composable
 private fun ExpenseLine(expense: Expense, today: LocalDate) {
     ListItem(
-        leadingContent = { Text(expense.category.emoji, style = MaterialTheme.typography.titleLarge) },
+        modifier = Modifier.clip(MaterialTheme.shapes.medium),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        leadingContent = { CategoryBadge(expense.category) },
         headlineContent = { Text(expense.rawText.ifBlank { expense.category.label }) },
         supportingContent = { Text("${expense.category.label} · ${expense.date.relativeLabel(today)}") },
         // Mutabakat brüt tutarla yapılır: karta giren tam tutar gösterilir.

@@ -131,13 +131,28 @@ class HomeViewModel(
                     // Düzeltme diske yazılır: aynı kelimeler bir dahaki sefere doğru tahmin edilir.
                     withContext(ioDispatcher) { categorizer.learnFromCorrection(parsed.tokens, category) }
                 }
-                expenses.add(expense.copy(category = category))
+                val saved = expense.copy(category = category)
+                // Kayıttan önce bakılır: sonra bakılsa durum çoktan güncellenmiş olabilir, harcama iki kez düşülürdü.
+                val onTrack = staysOnTrack(saved)
+                expenses.add(saved)
+                _effect.send(HomeEffect.EntrySaved(onTrack))
                 current.entry.clearText()
                 _state.update { it.copy(categoryOverride = null, cardOverride = null) }
             } finally {
                 _state.update { it.copy(isSaving = false) }
             }
         }
+    }
+
+    /**
+     * Kayıttan önceki duruma göre: bugünkü harcamaysa bugünün payı, başka günse haftanın kalanı hâlâ
+     * yetiyor mu. Bütçe yoksa ya da para birimi farklıysa kutlama yok.
+     */
+    private fun staysOnTrack(expense: Expense): Boolean {
+        val status = state.value.status ?: return false
+        if (expense.grossAmount.currency != status.weeklyLimit.currency) return false
+        val left = if (expense.date == today.value) status.todayRemaining else status.weekRemaining
+        return !(left - expense.chargeableAmount).isNegative
     }
 
     private fun delete(expense: Expense) {

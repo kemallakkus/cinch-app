@@ -5,8 +5,10 @@ import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
 import com.cinch.shared.data.SqlExpenseRepository
+import com.cinch.shared.data.SqlIncomeRepository
 import com.cinch.shared.data.newDatabase
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.Income
 import com.cinch.shared.money.AppLocale
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -32,6 +34,7 @@ class PlanCoachWeekTest {
         val budgets: SqlBudgetRepository,
         val expenses: SqlExpenseRepository,
         val cards: SqlCardRepository,
+        val incomes: SqlIncomeRepository,
         val plan: PlanCoachWeek,
     )
 
@@ -41,9 +44,10 @@ class PlanCoachWeekTest {
         val budgets = SqlBudgetRepository(db, io)
         val expenses = SqlExpenseRepository(db, io)
         val cards = SqlCardRepository(db, io)
+        val incomes = SqlIncomeRepository(db, io)
         return Fixture(
-            budgets, expenses, cards,
-            PlanCoachWeek(budgets, expenses, cards, BudgetEngine(), CoachRules()),
+            budgets, expenses, cards, incomes,
+            PlanCoachWeek(budgets, expenses, cards, incomes, BudgetEngine(), CoachRules()),
         )
     }
 
@@ -105,9 +109,11 @@ class PlanCoachWeekTest {
     }
 
     @Test
-    fun salary_fromBudgetSalaryDay() = runTest {
+    fun salary_followsLargestIncomeDay() = runTest {
         val f = fixture()
-        f.budgets.save(BudgetConfig(weeklyLimit = tl(700), salaryDay = 15))
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        f.incomes.add(Income(name = "Kira geliri", amount = tl(8_000), dayOfMonth = 14))
+        f.incomes.add(Income(name = "Maaş", amount = tl(40_000), dayOfMonth = 15))
 
         val salary = f.plan(today).filter { it.type == NotificationType.SALARY }
 
@@ -115,9 +121,10 @@ class PlanCoachWeekTest {
     }
 
     @Test
-    fun salary_noneWithoutSalaryDay() = runTest {
+    fun salary_noneWithoutIncomeDay() = runTest {
         val f = fixture()
         f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        f.incomes.add(Income(name = "Serbest iş", amount = tl(5_000))) // günü belli değil
         assertTrue(f.plan(today).none { it.type == NotificationType.SALARY })
     }
 

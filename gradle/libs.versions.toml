@@ -9,6 +9,8 @@ android-targetSdk = "37"
 
 # Compose
 composeMultiplatform = "1.12.1"
+# Material ikonları artık yayımlanmıyor; son sürüm CMP 1.12 ile çalışıyor (BimserMobileCMP'de de aynı).
+composeIconsExtended = "1.7.3"
 
 # AndroidX
 androidx-activityCompose = "1.12.0"
@@ -38,6 +40,9 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+
+# Compose
+compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeIconsExtended" }
 
 # Compose runtime VM (jetbrains, multiplatform)
 jetbrains-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "jetbrains-lifecycle" }

@@ -10,11 +10,10 @@ data class CardEditState(
     val isNew: Boolean,
     val isLoading: Boolean = !isNew,
     val name: TextFieldState = TextFieldState(),
-    val statementDay: TextFieldState = TextFieldState(),
+    val statementDay: Int? = null,
     val carriedBalance: TextFieldState = TextFieldState(),
     val monthlyRate: TextFieldState = TextFieldState(formatPercent(DEFAULT_MONTHLY_RATE)),
     val nameError: Boolean = false,
-    val statementDayError: Boolean = false,
     val balanceError: Boolean = false,
     val rateError: Boolean = false,
     val isSaving: Boolean = false,
@@ -27,6 +26,7 @@ data class CardEditState(
 }
 
 sealed interface CardEditEvent {
+    data class StatementDayPicked(val day: Int?) : CardEditEvent
     data object Save : CardEditEvent
     data object DeleteRequested : CardEditEvent
     data object DeleteConfirmed : CardEditEvent

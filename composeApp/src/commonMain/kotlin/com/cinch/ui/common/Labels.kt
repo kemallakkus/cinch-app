@@ -78,3 +78,17 @@ fun formatPercent(value: Double): String =
 /** "4,9" ya da "4.9" → 4.9. Boş, geçersiz ya da 0–100 dışıysa null. */
 fun parsePercent(text: String): Double? =
     text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it in 0.0..100.0 }
+
+private val longMonths = listOf(
+    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+)
+
+/** "13 Ocak Pazartesi". */
+fun LocalDate.longDayLabel(): String = "$day ${longMonths[month.ordinal]} ${dayOfWeek.longLabel}"
+
+/** Hafta çubuğu için tek harf: P, S, Ç, P, C, C, P. */
+val DayOfWeek.initial: String get() = longLabel.take(1)
+
+/** "Ekim 2026". */
+fun LocalDate.monthYearLabel(): String = "${longMonths[month.ordinal]} $year"

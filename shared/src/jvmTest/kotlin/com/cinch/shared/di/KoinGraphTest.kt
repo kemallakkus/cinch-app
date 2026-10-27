@@ -2,6 +2,7 @@ package com.cinch.shared.di
 
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.budget.ObserveBudgetStatus
+import com.cinch.shared.budget.ObserveMonthSummary
 import com.cinch.shared.category.CorrectionStore
 import com.cinch.shared.coach.CoachNotificationPlanner
 import com.cinch.shared.coach.NotificationType
@@ -9,6 +10,7 @@ import com.cinch.shared.coach.PlanCoachWeek
 import com.cinch.shared.data.SqlCorrectionStore
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.QuickEntryParser
@@ -46,6 +48,8 @@ class KoinGraphTest {
         koin.get<PlanCoachWeek>()
         koin.get<QuickEntryParser>()
         koin.get<CoachNotificationPlanner>()
+        koin.get<ObserveMonthSummary>()
+        koin.get<IncomeRepository>()
         koin.get<LocalClock>()
         koin.get<KeyValueStore>()
         assertIs<SqlCorrectionStore>(koin.get<CorrectionStore>())
