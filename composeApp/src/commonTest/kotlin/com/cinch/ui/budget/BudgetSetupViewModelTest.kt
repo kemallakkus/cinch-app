@@ -10,7 +10,10 @@ import com.cinch.shared.money.Money
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
 import com.cinch.shared.domain.Income
+import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.ui.FakeBudgetRepository
+import com.cinch.ui.FakeClock
+import com.cinch.ui.FakeExpenseRepository
 import com.cinch.ui.FakeFixedExpenseRepository
 import com.cinch.ui.FakeIncomeRepository
 import androidx.lifecycle.viewModelScope
@@ -22,6 +25,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -44,7 +48,11 @@ class BudgetSetupViewModelTest {
             val incomes = FakeIncomeRepository().apply { incomeList.forEach { add(it) } }
             val fixed = FakeFixedExpenseRepository().apply { fixedList.forEach { add(it) } }
             val vm = BudgetSetupViewModel(
-                BudgetSetupRoute(isOnboarding = existing == null), repo, incomes, fixed,
+                BudgetSetupRoute(isOnboarding = existing == null),
+                repo,
+                incomes,
+                ActiveFixedExpenses(fixed, FakeExpenseRepository()),
+                FakeClock(LocalDate(2025, 1, 15)),
             )
             runCurrent()
             block(vm, repo)

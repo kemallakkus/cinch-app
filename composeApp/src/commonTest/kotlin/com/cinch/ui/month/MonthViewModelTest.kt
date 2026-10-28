@@ -105,7 +105,7 @@ class MonthViewModelTest {
         f.vm.onEvent(MonthEvent.PayConfirmed)
         runCurrent()
 
-        assertEquals(MonthEffect.Paid, f.vm.effect.first())
+        assertEquals(MonthEffect.Paid(finishedName = null), f.vm.effect.first())
         val paid = f.state.summary!!.fixed.single()
         assertEquals(FixedPaymentState.PAID, paid.state)
         assertEquals(Money(91_240, Currency.TRY), paid.amountForMonth)

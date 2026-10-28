@@ -2,6 +2,7 @@ package com.cinch.shared.di
 
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.ObserveBudgetStatus
+import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
 import com.cinch.shared.category.Categorizer
@@ -84,6 +85,12 @@ class DomainModule {
 
     @Factory
     fun fixedPayments(expenses: ExpenseRepository): FixedPayments = FixedPayments(expenses)
+
+    @Factory
+    fun activeFixedExpenses(
+        fixedExpenses: FixedExpenseRepository,
+        expenses: ExpenseRepository,
+    ): ActiveFixedExpenses = ActiveFixedExpenses(fixedExpenses, expenses)
 
     @Factory
     fun coachNotificationPlanner(plan: PlanCoachWeek, clock: LocalClock): CoachNotificationPlanner =

@@ -5,14 +5,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cinch.navigation.BudgetSetupRoute
+import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.budget.WeeklyLimitSuggestion
 import com.cinch.shared.domain.repository.BudgetRepository
-import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyInput
+import com.cinch.shared.time.LocalClock
 import com.cinch.ui.common.toInputText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,8 @@ class BudgetSetupViewModel(
     route: BudgetSetupRoute,
     private val budgets: BudgetRepository,
     private val incomes: IncomeRepository,
-    private val fixedExpenses: FixedExpenseRepository,
+    private val activeFixed: ActiveFixedExpenses,
+    private val clock: LocalClock,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BudgetSetupState(isOnboarding = route.isOnboarding))
@@ -75,7 +77,8 @@ class BudgetSetupViewModel(
     private suspend fun suggestion(): LimitSuggestion? {
         val income = Money.sum(incomes.all().filter { it.currency == currency }.map { it.amount }, currency)
         if (income.isZero) return null
-        val fixed = Money.sum(fixedExpenses.all().filter { it.currency == currency }.map { it.amount }, currency)
+        // Biten borçlar sayılmaz; esnek borç "genelde ödediğim" tutarla girer.
+        val fixed = activeFixed.plannedMonthlyTotal(clock.today(), currency)
         return LimitSuggestion(income, fixed, WeeklyLimitSuggestion.suggest(income, fixed))
     }
 

@@ -64,8 +64,11 @@ data class CoachInput(
     val fixedDues: List<FixedDue> = emptyList(),
 )
 
-/** Ufuktaki bir sabit gider ödeme günü. [paid] = o ayın ödemesi zaten işaretlendi. */
-data class FixedDue(val name: String, val amount: Money, val date: LocalDate, val paid: Boolean)
+/**
+ * Ufuktaki bir sabit gider ödeme günü. [paid] = o ayın ödemesi zaten işaretlendi.
+ * [amount] null = tutar bilinmiyor (esnek borçta "genelde ödediğim" girilmemiş); mesajda tutar yazılmaz.
+ */
+data class FixedDue(val name: String, val amount: Money?, val date: LocalDate, val paid: Boolean)
 
 /**
  * Her kayıttan sonra önümüzdeki 7 günün yerel bildirimlerini yeniden hesaplar.
@@ -240,7 +243,9 @@ class CoachRules(private val horizonDays: Int = 7) {
             .groupBy { it.date.minusDays(1) }
             .filterKeys { it in horizonSet }
             .map { (notifyDay, dues) ->
-                val list = dues.joinToString { "${it.name} ${MoneyFormatter.format(it.amount, config.locale)}" }
+                val list = dues.joinToString { due ->
+                    due.amount?.let { "${due.name} ${MoneyFormatter.format(it, config.locale)}" } ?: due.name
+                }
                 val msg = when (config.locale) {
                     AppLocale.TR -> if (dues.size == 1) "Yarın ödeme günü: $list." else "Yarın ${dues.size} ödeme var: $list."
                     AppLocale.EN -> if (dues.size == 1) "Payment due tomorrow: $list." else "${dues.size} payments due tomorrow: $list."

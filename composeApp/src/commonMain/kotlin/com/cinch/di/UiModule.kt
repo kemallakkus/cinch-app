@@ -3,10 +3,12 @@ package com.cinch.di
 import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.navigation.CardEditRoute
+import com.cinch.navigation.DebtDetailRoute
 import com.cinch.navigation.FixedEditRoute
 import com.cinch.navigation.IncomeEditRoute
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.shared.budget.ObserveBudgetStatus
+import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
 import com.cinch.shared.category.Categorizer
@@ -24,6 +26,7 @@ import com.cinch.ui.cards.CardDetailViewModel
 import com.cinch.ui.cards.CardEditViewModel
 import com.cinch.ui.cards.CardsViewModel
 import com.cinch.ui.home.HomeViewModel
+import com.cinch.ui.month.DebtDetailViewModel
 import com.cinch.ui.month.FixedEditViewModel
 import com.cinch.ui.month.IncomeEditViewModel
 import com.cinch.ui.month.MonthViewModel
@@ -49,8 +52,9 @@ class UiModule {
         @InjectedParam route: BudgetSetupRoute,
         budgets: BudgetRepository,
         incomes: IncomeRepository,
-        fixedExpenses: FixedExpenseRepository,
-    ): BudgetSetupViewModel = BudgetSetupViewModel(route, budgets, incomes, fixedExpenses)
+        activeFixed: ActiveFixedExpenses,
+        clock: LocalClock,
+    ): BudgetSetupViewModel = BudgetSetupViewModel(route, budgets, incomes, activeFixed, clock)
 
     @KoinViewModel
     fun homeViewModel(
@@ -112,4 +116,13 @@ class UiModule {
     @KoinViewModel
     fun settingsViewModel(budgets: BudgetRepository, access: NotificationAccessChecker): SettingsViewModel =
         SettingsViewModel(budgets, access)
+
+    @KoinViewModel
+    fun debtDetailViewModel(
+        @InjectedParam route: DebtDetailRoute,
+        fixedExpenses: FixedExpenseRepository,
+        expenses: ExpenseRepository,
+        fixedPayments: FixedPayments,
+        clock: LocalClock,
+    ): DebtDetailViewModel = DebtDetailViewModel(route, fixedExpenses, expenses, fixedPayments, clock)
 }

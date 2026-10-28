@@ -41,3 +41,7 @@ data class IncomeEditRoute(val incomeId: Long? = null) : CinchRoute
 /** @param fixedId düzenlenecek sabit gider; null ise yeni. */
 @Serializable
 data class FixedEditRoute(val fixedId: Long? = null) : CinchRoute
+
+/** Taksitli ya da esnek borcun ilerlemesi ve ödeme geçmişi. */
+@Serializable
+data class DebtDetailRoute(val fixedId: Long) : CinchRoute

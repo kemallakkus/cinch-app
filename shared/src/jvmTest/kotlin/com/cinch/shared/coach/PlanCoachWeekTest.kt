@@ -12,6 +12,7 @@ import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
 import com.cinch.shared.money.AppLocale
 import com.cinch.shared.money.Currency
@@ -184,5 +185,36 @@ class PlanCoachWeekTest {
 
         // Kira haftalık paydan düşülmez: (700 - 0) / 7 = 100 ₺
         assertTrue(MoneyFormatter.format(tl(100), AppLocale.TR) in midday.message, midday.message)
+    }
+
+    @Test
+    fun installments_reminderShowsInstallmentNumber_andStopsWhenFinished() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        val id = f.fixed.add(
+            FixedExpense(
+                name = "Ablama borç", amount = tl(5_000), dayOfMonth = 15,
+                plan = FixedPlan.INSTALLMENTS, totalInstallments = 6, paidBefore = 4,
+            ),
+        )
+
+        val due = f.plan(today).single { it.type == NotificationType.FIXED_DUE }
+        assertTrue("5/6. taksit" in due.message, due.message)
+
+        // Son iki taksit önceki aylarda ödendi: borç bitti, hatırlatma yok.
+        f.expenses.add(Expense(date = LocalDate(2024, 11, 15), grossAmount = tl(5_000), fixedExpenseId = id))
+        f.expenses.add(Expense(date = LocalDate(2024, 12, 15), grossAmount = tl(5_000), fixedExpenseId = id))
+        assertTrue(f.plan(today).none { it.type == NotificationType.FIXED_DUE || it.type == NotificationType.FIXED_UNPAID })
+    }
+
+    @Test
+    fun flexibleWithoutUsualAmount_reminderHasNoAmount() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        f.fixed.add(FixedExpense(name = "Eminevim", amount = tl(0), dayOfMonth = 15, plan = FixedPlan.FLEXIBLE, debt = tl(180_000)))
+
+        val due = f.plan(today).single { it.type == NotificationType.FIXED_DUE }
+
+        assertEquals("Yarın ödeme günü: Eminevim.", due.message)
     }
 }

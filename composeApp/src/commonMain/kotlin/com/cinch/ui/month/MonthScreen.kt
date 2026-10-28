@@ -33,11 +33,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,10 +49,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.cinch.shared.budget.DebtProgress
 import com.cinch.shared.budget.FixedPaymentState
 import com.cinch.shared.budget.FixedStatus
 import com.cinch.shared.budget.MonthSummary
 import com.cinch.shared.budget.Payday
+import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
 import com.cinch.ui.common.AnimatedMoneyText
 import com.cinch.ui.common.ConfettiBurst
@@ -74,11 +79,14 @@ fun MonthScreen(
     onOpenIncome: (Long) -> Unit,
     onAddFixed: () -> Unit,
     onOpenFixed: (Long) -> Unit,
+    onOpenDebt: (Long) -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     confettiTrigger: Int = 0,
 ) {
     Box(Modifier.fillMaxSize()) {
         Scaffold(
             topBar = { TopAppBar(title = { Text(state.today.monthYearLabel()) }) },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -116,9 +124,23 @@ fun MonthScreen(
                     FixedRow(
                         status = status,
                         today = state.today,
-                        onOpen = { onOpenFixed(status.fixed.id) },
+                        // Borçlar (taksitli/esnek) ilerleme ve geçmiş için detaya, diğerleri forma açılır.
+                        onOpen = { if (status.fixed.isDebt) onOpenDebt(status.fixed.id) else onOpenFixed(status.fixed.id) },
                         onCheck = { onEvent(MonthEvent.FixedCheckClicked(status)) },
                     )
+                }
+                val finished = summary?.finishedFixed.orEmpty()
+                if (finished.isNotEmpty()) {
+                    item(key = "finishedHeader") {
+                        Text(
+                            "🎉 Biten borçlar",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+                        )
+                    }
+                    items(finished, key = { "finished-${it.fixed.id}" }) { status ->
+                        FinishedRow(status, onOpen = { onOpenDebt(status.fixed.id) })
+                    }
                 }
 
                 item(key = "incomesHeader") {
@@ -285,9 +307,14 @@ private fun FixedRow(status: FixedStatus, today: LocalDate, onOpen: () -> Unit, 
             Modifier.size(44.dp).clip(CircleShape).background(status.fixed.kind.category.colors().container),
             contentAlignment = Alignment.Center,
         ) { Text(status.fixed.kind.emoji, style = MaterialTheme.typography.titleMedium) }
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(status.fixed.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(stateText, style = MaterialTheme.typography.bodySmall, color = stateColor)
+            Text(
+                if (status.isFinished) "🎉 Bu ödemeyle bitti" else stateText,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (status.isFinished) colors.good else stateColor,
+            )
+            status.progress?.let { DebtProgressLine(it) }
         }
         Text(status.amountForMonth.display(), style = MaterialTheme.typography.titleSmall)
         PaidCheck(paid = paid, onClick = onCheck)
@@ -324,10 +351,24 @@ private fun PaidCheck(paid: Boolean, onClick: () -> Unit) {
 private fun PayDialog(status: FixedStatus, state: MonthState, onEvent: (MonthEvent) -> Unit) {
     AlertDialog(
         onDismissRequest = { onEvent(MonthEvent.DialogDismissed) },
-        title = { Text("${status.fixed.kind.emoji} ${status.fixed.name} ödendi mi?") },
+        title = {
+            Text(
+                if (status.fixed.plan == FixedPlan.FLEXIBLE) "${status.fixed.kind.emoji} ${status.fixed.name}: bu ay ne kadar ödedin?"
+                else "${status.fixed.kind.emoji} ${status.fixed.name} ödendi mi?",
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Faturada tutar farklıysa düzelt.", style = MaterialTheme.typography.bodyMedium)
+                val progress = status.progress
+                Text(
+                    when {
+                        progress == null -> "Faturada tutar farklıysa düzelt."
+                        status.fixed.plan == FixedPlan.INSTALLMENTS ->
+                            "${(progress.paidCount ?: 0) + 1}/${progress.totalCount}. taksit. Tutar farklıysa düzelt."
+                        else -> "Kalan borç ${progress.remainingDebt.display()}. Ne ödediysen onu yaz."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 OutlinedTextField(
                     state = state.payAmount,
                     label = { Text("Ödenen tutar") },
@@ -381,6 +422,52 @@ private fun IncomeRow(income: Income, onClick: () -> Unit) {
             Text("Tutarı gir", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleSmall)
         } else {
             Text(income.amount.display(), style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}
+
+/** Borç satırının altındaki kısa ilerleme: yazı + ince çubuk. */
+@Composable
+private fun DebtProgressLine(progress: DebtProgress) {
+    val good = CinchTheme.colors.good
+    val text = when (progress.plan) {
+        FixedPlan.INSTALLMENTS -> "${progress.paidCount}/${progress.totalCount} taksit · ${progress.remainingCount} kaldı"
+        else -> "Kalan ${progress.remainingDebt.display()}"
+    }
+    Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(progress.fraction)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(good),
+        )
+    }
+}
+
+@Composable
+private fun FinishedRow(status: FixedStatus, onOpen: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(status.fixed.kind.emoji, style = MaterialTheme.typography.titleMedium)
+        Text(status.fixed.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        status.progress?.let {
+            Text("Toplam ${it.paidTotal.display()}", style = MaterialTheme.typography.bodySmall, color = CinchTheme.colors.good)
         }
     }
 }

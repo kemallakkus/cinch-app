@@ -1,5 +1,6 @@
 package com.cinch.ui.month
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -8,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -16,10 +18,12 @@ fun MonthWrapper(
     onOpenIncome: (Long) -> Unit,
     onAddFixed: () -> Unit,
     onOpenFixed: (Long) -> Unit,
+    onOpenDebt: (Long) -> Unit,
     viewModel: MonthViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confetti by remember { mutableIntStateOf(0) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LifecycleResumeEffect(viewModel) {
         viewModel.onEvent(MonthEvent.Resumed)
@@ -28,7 +32,10 @@ fun MonthWrapper(
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                MonthEffect.Paid -> confetti++
+                is MonthEffect.Paid -> {
+                    confetti++
+                    effect.finishedName?.let { name -> launch { snackbarHostState.showSnackbar("🎉 $name bitti! Tebrikler.") } }
+                }
             }
         }
     }
@@ -40,6 +47,8 @@ fun MonthWrapper(
         onOpenIncome = onOpenIncome,
         onAddFixed = onAddFixed,
         onOpenFixed = onOpenFixed,
+        onOpenDebt = onOpenDebt,
+        snackbarHostState = snackbarHostState,
         confettiTrigger = confetti,
     )
 }

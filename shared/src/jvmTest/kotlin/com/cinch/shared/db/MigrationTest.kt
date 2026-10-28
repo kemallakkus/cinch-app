@@ -32,8 +32,8 @@ class MigrationTest {
     }
 
     @Test
-    fun schemaVersionIsThree() {
-        assertEquals(3L, CinchDatabase.Schema.version)
+    fun schemaVersionIsFour() {
+        assertEquals(4L, CinchDatabase.Schema.version)
     }
 
     @Test
@@ -89,5 +89,34 @@ class MigrationTest {
         assertEquals(19_500L, old.gross_minor)
         assertEquals(null, old.fixed_expense_id)
         assertTrue(queries.allFixedExpenses().executeAsList().isEmpty())
+    }
+
+    @Test
+    fun v3To4_existingFixedExpensesBecomeMonthly() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        driver.execute(
+            null,
+            """
+            CREATE TABLE fixed_expense (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                amount_minor INTEGER NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'TRY',
+                day_of_month INTEGER NOT NULL,
+                kind TEXT NOT NULL DEFAULT 'OTHER',
+                card_id INTEGER
+            );
+            """.trimIndent(),
+            0,
+        )
+        driver.execute(null, "INSERT INTO fixed_expense(name, amount_minor, day_of_month, kind) VALUES ('Kira', 1500000, 1, 'RENT')", 0)
+
+        CinchDatabase.Schema.migrate(driver, 3, 4)
+
+        val row = CinchDatabase(driver).cinchQueries.allFixedExpenses().executeAsList().single()
+        assertEquals("MONTHLY", row.plan)
+        assertEquals(0L, row.paid_before)
+        assertEquals(null, row.total_installments)
+        assertEquals(null, row.debt_minor)
     }
 }

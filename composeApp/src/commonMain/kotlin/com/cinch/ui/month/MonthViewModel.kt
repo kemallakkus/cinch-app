@@ -6,13 +6,16 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cinch.shared.budget.DebtProgress
 import com.cinch.shared.budget.FixedPaymentState
 import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.FixedStatus
 import com.cinch.shared.budget.MonthSummary
 import com.cinch.shared.budget.ObserveMonthSummary
+import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
 import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyInput
 import com.cinch.shared.time.LocalClock
 import com.cinch.ui.common.toInputText
@@ -61,8 +64,8 @@ sealed interface MonthEvent {
 }
 
 sealed interface MonthEffect {
-    /** Ödeme işaretlendi: küçük bir kutlama. */
-    data object Paid : MonthEffect
+    /** Ödeme işaretlendi: küçük bir kutlama. [finishedName] doluysa bu ödemeyle borç bitti. */
+    data class Paid(val finishedName: String? = null) : MonthEffect
 }
 
 /** "Bu ay" sekmesi: gelir − sabit giderler − harcama özeti, gelirler ve sabit giderler. */
@@ -120,7 +123,8 @@ class MonthViewModel(
         if (status.state == FixedPaymentState.PAID) {
             ui.update { it.copy(dialog = MonthDialog.Undo(status)) }
         } else {
-            payAmount.setTextAndPlaceCursorAtEnd(status.fixed.amount.toInputText())
+            // Tahmini tutarla açılır; esnek borçta tutar bilinmiyorsa boş (kullanıcı ne ödediyse yazar).
+            payAmount.setTextAndPlaceCursorAtEnd(status.plannedAmount.takeIf { !it.isZero }?.toInputText().orEmpty())
             ui.update { it.copy(dialog = MonthDialog.Pay(status), payAmountError = false) }
         }
     }
@@ -134,9 +138,10 @@ class MonthViewModel(
             return
         }
         ui.update { it.copy(dialog = null) }
+        val finishes = dialog.status.progress?.let { debtFinishes(it, amount) } == true
         viewModelScope.launch {
             fixedPayments.markPaid(fixed, amount, clock.today())
-            _effect.send(MonthEffect.Paid)
+            _effect.send(MonthEffect.Paid(finishedName = fixed.name.takeIf { finishes }))
         }
     }
 
@@ -145,4 +150,11 @@ class MonthViewModel(
         ui.update { it.copy(dialog = null) }
         viewModelScope.launch { fixedPayments.undo(payment) }
     }
+}
+
+/** Bu ödemeyle borç biter mi: taksitte son taksit, esnek borçta kalanı kapatan tutar. */
+internal fun debtFinishes(progress: DebtProgress, amount: Money): Boolean = when (progress.plan) {
+    FixedPlan.INSTALLMENTS -> progress.remainingCount == 1
+    FixedPlan.FLEXIBLE -> !progress.isFinished && progress.remainingDebt.minor - amount.minor <= 0
+    FixedPlan.MONTHLY -> false
 }

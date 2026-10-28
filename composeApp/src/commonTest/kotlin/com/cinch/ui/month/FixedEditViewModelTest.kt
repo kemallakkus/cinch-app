@@ -8,6 +8,7 @@ import com.cinch.navigation.FixedEditRoute
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.ui.FakeCardRepository
@@ -95,5 +96,51 @@ class FixedEditViewModelTest {
 
         assertEquals(FixedEditEffect.Done, vm.effect.first())
         assertEquals(tl(16_500), repo.all.value.single().amount)
+    }
+
+    @Test
+    fun installments_validatesCounts_andSaves() = testVm { vm, repo ->
+        vm.onEvent(FixedEditEvent.PlanPicked(FixedPlan.INSTALLMENTS))
+        assertEquals(FixedExpenseKind.LOAN, vm.state.value.kind) // varsayılan "Kira" borçta krediye döner
+        type(vm.state.value.name, "Ablama borç")
+        type(vm.state.value.amount, "5000")
+        type(vm.state.value.totalInstallments, "6")
+        type(vm.state.value.paidBefore, "7") // toplamdan fazla
+        vm.onEvent(FixedEditEvent.DayPicked(10))
+        vm.onEvent(FixedEditEvent.Save)
+        runCurrent()
+        assertTrue(vm.state.value.installmentsError)
+        assertTrue(repo.all.value.isEmpty())
+
+        type(vm.state.value.paidBefore, "4")
+        vm.onEvent(FixedEditEvent.Save)
+
+        assertEquals(FixedEditEffect.Done, vm.effect.first())
+        val saved = repo.all.value.single()
+        assertEquals(FixedPlan.INSTALLMENTS, saved.plan)
+        assertEquals(6, saved.totalInstallments)
+        assertEquals(4, saved.paidBefore)
+        assertEquals(null, saved.debt)
+    }
+
+    @Test
+    fun flexible_requiresDebt_usualAmountOptional() = testVm { vm, repo ->
+        vm.onEvent(FixedEditEvent.PlanPicked(FixedPlan.FLEXIBLE))
+        type(vm.state.value.name, "Eminevim")
+        vm.onEvent(FixedEditEvent.DayPicked(5))
+        vm.onEvent(FixedEditEvent.Save)
+        runCurrent()
+        assertTrue(vm.state.value.debtError)
+        assertTrue(!vm.state.value.amountError) // "genelde ödediğim" boş olabilir
+
+        type(vm.state.value.debt, "180.000")
+        vm.onEvent(FixedEditEvent.Save)
+
+        assertEquals(FixedEditEffect.Done, vm.effect.first())
+        val saved = repo.all.value.single()
+        assertEquals(FixedPlan.FLEXIBLE, saved.plan)
+        assertEquals(tl(180_000), saved.debt)
+        assertEquals(tl(0), saved.amount)
+        assertEquals(null, saved.totalInstallments)
     }
 }

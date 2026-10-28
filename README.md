@@ -55,14 +55,20 @@ Eksik bağımlılık derleme anında hata verir (compile safety).
 
 **Şema sürümleri:** `Cinch.sq` güncel şemadır; her değişiklik ayrıca `<eski sürüm>.sqm` dosyasına migration
 olarak yazılır (`1.sqm`: gelir tablosu, bütçedeki maaş günü "Maaş" gelirine taşınır; `2.sqm`: sabit gider
-tablosu ve harcamaya `fixed_expense_id`). Telefondaki eski
+tablosu ve harcamaya `fixed_expense_id`; `3.sqm`: sabit giderlere ödeme şekli, taksit ve borç alanları). Telefondaki eski
 kurulum açılışta veri kaybetmeden yükseltilir; `MigrationTest` bunu doğrular. Yeni şema değişikliğinde
 bir sonraki `<n>.sqm` eklenir, `Cinch.sq` güncellenir.
 
 **Sabit giderler** (kira, fatura, abonelik, kredi taksiti) haftalık serbest harcama bütçesinden ayrıdır. "Ödendi"
 işareti, sabit gidere bağlı bir harcama kaydı oluşturur (`Expense.fixedExpenseId`): günlük/haftalık paya ve
 alışkanlık sayımına girmez, ay hesabına girer; kartla ödeniyorsa o kartın "bankayla karşılaştır" hesabına da yazılır.
-Ödenmemiş sabit gider ay özetinde planlanan tutarıyla düşülür. Koç ödeme gününden bir gün önce (19:00) ve o gün
+Ödenmemiş sabit gider ay özetinde planlanan tutarıyla düşülür.
+
+Üç ödeme şekli var (`FixedPlan`): **her ay** (bitişi yok), **taksitli** (toplam + önceden ödenen taksit; son
+taksitte biter) ve **esnek borç** (Eminevim gibi: kalan borç, her ay farklı tutar; borç sıfırlanınca biter).
+Taksit sayısı ve kalan borç saklanmaz, geçmiş ödemelerden hesaplanır (`DebtProgress`). Biten borç sonraki aylarda
+ay hesabına ve hatırlatmalara girmez, "Biten borçlar"a geçer. Esnek borçta bitiş tahmini "genelde ödediğim"
+tutarla, o yoksa son 3 ödemenin ortalamasıyla yapılır. Koç ödeme gününden bir gün önce (19:00) ve o gün
 akşam hâlâ işaretlenmemişse (20:30) hatırlatır.
 
 ## Ekranlar (`composeApp/.../`)
@@ -74,7 +80,7 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 |---|---|---|
 | Bütçe kurulumu | İlk açılışta (bütçe yoksa) alt menüsüz açılır; haftalık harcama sınırı ve hafta başlangıcı. Gelir ve sabit giderler girildiyse haftalık sınır önerir ("Bunu kullan"). Sonra Ayarlar'dan düzenlenir | `ui/budget/` |
 | Bugün | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (sola kaydır → sil, "Geri al") | `ui/home/` |
-| Bu ay | Gelir − sabit giderler − harcamalar = elinde kalan; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir) ve gelirler, ekleme/düzenleme | `ui/month/` |
+| Bu ay | Gelir − sabit giderler − harcamalar = elinde kalan; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir; borçlarda ilerleme çubuğu, borca dokun → detay: ilerleme, bitiş tahmini, ödeme ekle/sil) ve gelirler, ekleme/düzenleme | `ui/month/` |
 | Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu | `ui/settings/` |
 | Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir | `ui/home/QuickEntryBar.kt` |
 | Kartlar | Kart listesi; ekleme/düzenleme (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |

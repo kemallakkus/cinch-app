@@ -4,6 +4,7 @@ import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.coroutines.flow.first
@@ -55,5 +56,26 @@ class SqlFixedExpenseRepositoryTest {
 
         payments.undo(payment)
         assertTrue(expenses.between(day, day).isEmpty())
+    }
+
+    @Test
+    fun debtPlans_roundTrip() = runTest {
+        val repo = SqlFixedExpenseRepository(newDatabase(), StandardTestDispatcher(testScheduler))
+        val installments = FixedExpense(
+            name = "Ablama borç", amount = tl(5_000), dayOfMonth = 10,
+            plan = FixedPlan.INSTALLMENTS, totalInstallments = 6, paidBefore = 4,
+        )
+        val flexible = FixedExpense(
+            name = "Eminevim", amount = tl(0), dayOfMonth = 5, kind = FixedExpenseKind.LOAN,
+            plan = FixedPlan.FLEXIBLE, debt = tl(180_000),
+        )
+        val a = repo.add(installments)
+        val b = repo.add(flexible)
+
+        assertEquals(installments.copy(id = a), repo.get(a))
+        assertEquals(flexible.copy(id = b), repo.get(b))
+
+        repo.update(installments.copy(id = a, paidBefore = 5))
+        assertEquals(5, repo.get(a)?.paidBefore)
     }
 }

@@ -9,6 +9,11 @@ import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.budget.BudgetConfig
+import com.cinch.shared.budget.DebtProgress
+import com.cinch.shared.budget.progress
+import com.cinch.shared.domain.FixedExpense
+import com.cinch.shared.domain.FixedPlan
+import com.cinch.shared.money.Money
 import com.cinch.shared.parser.minusDays
 import com.cinch.shared.parser.plusDays
 import kotlinx.datetime.DatePeriod
@@ -67,21 +72,37 @@ class PlanCoachWeek(
 
     /**
      * Önümüzdeki 8 günün sabit gider ödeme günleri (yarınki ödeme bugünden hatırlatılır). O ayın ödemesi
-     * zaten işaretlendiyse [FixedDue.paid] true: hatırlatma gerekmez.
+     * zaten işaretlendiyse [FixedDue.paid] true: hatırlatma gerekmez. Biten borçlar (son taksit ödendi,
+     * kalan borç sıfır) hiç hatırlatılmaz.
      */
     private suspend fun fixedDues(budget: BudgetConfig, today: LocalDate): List<FixedDue> {
         val until = today.plusDays(8)
-        val payments = expenses.between(LocalDate(today.year, today.month, 1), until).filter { it.isFixedPayment }
+        val payments = expenses.fixedPayments()
         return fixedExpenses.all()
             .filter { it.currency == budget.currency }
             .flatMap { fixed ->
+                val progress = fixed.progress(payments, today)
+                if (progress?.isFinished == true) return@flatMap emptyList()
                 fixed.dueDatesBetween(today, until).map { date ->
                     val paid = payments.any {
                         it.fixedExpenseId == fixed.id && it.date.year == date.year && it.date.month == date.month
                     }
-                    FixedDue(fixed.name, fixed.amount, date, paid)
+                    FixedDue(dueName(fixed, progress), dueAmount(fixed, progress), date, paid)
                 }
             }
+    }
+
+    /** Taksitte kaçıncı taksit olduğu da yazılır: "Ablama borç (5/6. taksit)". */
+    private fun dueName(fixed: FixedExpense, progress: DebtProgress?): String {
+        val paid = progress?.paidCount ?: return fixed.name
+        val total = progress.totalCount ?: return fixed.name
+        return "${fixed.name} (${paid + 1}/$total. taksit)"
+    }
+
+    /** Esnek borçta tutar kalan borcu aşmaz; "genelde ödediğim" girilmemişse tutar yazılmaz. */
+    private fun dueAmount(fixed: FixedExpense, progress: DebtProgress?): Money? = when (fixed.plan) {
+        FixedPlan.FLEXIBLE -> progress?.let { minOf(fixed.amount, it.remainingDebt) }?.takeIf { !it.isZero }
+        else -> fixed.amount
     }
 
     /**
