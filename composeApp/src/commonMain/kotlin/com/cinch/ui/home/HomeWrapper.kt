@@ -12,6 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cinch.ui.notifications.NotificationPromptWrapper
+import com.cinch.ui.receipt.ReceiptReadingDialog
+import com.cinch.ui.receipt.rememberReceiptFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -19,10 +21,12 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeWrapper(
     onOpenExpense: (Long) -> Unit,
     onOpenHistory: () -> Unit,
+    onReceiptRead: (String) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val receipt = rememberReceiptFlow(snackbarHostState, onRead = onReceiptRead)
     var confetti by remember { mutableIntStateOf(0) }
 
     LifecycleResumeEffect(viewModel) {
@@ -57,6 +61,9 @@ fun HomeWrapper(
         confettiTrigger = confetti,
         onOpenExpense = onOpenExpense,
         onOpenHistory = onOpenHistory,
+        onScanReceipt = if (receipt.isSupported) receipt::scan else null,
+        onPickReceipt = if (receipt.isSupported) receipt::pickFromGallery else null,
         prompt = { NotificationPromptWrapper() },
     )
+    ReceiptReadingDialog(receipt)
 }

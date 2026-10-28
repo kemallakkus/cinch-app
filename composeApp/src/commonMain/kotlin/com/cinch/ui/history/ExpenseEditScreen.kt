@@ -1,7 +1,6 @@
 package com.cinch.ui.history
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -20,8 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -43,9 +40,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.ui.common.BackButton
+import com.cinch.ui.common.CardSelector
 import com.cinch.ui.common.CinchDatePickerDialog
 import com.cinch.ui.common.InfoTip
 import com.cinch.ui.common.emoji
@@ -236,36 +233,4 @@ private fun shareLabel(share: Double): String = when (share) {
     0.5 -> "Yarısı"
     0.0 -> "Hiç (geri geldi)"
     else -> "%${(share * 100).roundToInt()}"
-}
-
-@Composable
-private fun CardSelector(cards: List<Card>, selectedId: Long?, enabled: Boolean, onPick: (Long?) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val selected = cards.firstOrNull { it.id == selectedId }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Neyle ödedin?", style = MaterialTheme.typography.titleSmall)
-        Box {
-            OutlinedButton(onClick = { expanded = true }, enabled = enabled) {
-                Text(if (selected == null) "💵 Nakit ▾" else "💳 ${selected.name} ▾")
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(
-                    text = { Text("💵  Nakit") },
-                    onClick = {
-                        onPick(null)
-                        expanded = false
-                    },
-                )
-                cards.forEach { card ->
-                    DropdownMenuItem(
-                        text = { Text("💳  ${card.name}") },
-                        onClick = {
-                            onPick(card.id)
-                            expanded = false
-                        },
-                    )
-                }
-            }
-        }
-    }
 }

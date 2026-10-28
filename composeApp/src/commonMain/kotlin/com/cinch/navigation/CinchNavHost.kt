@@ -51,6 +51,7 @@ import com.cinch.ui.month.DebtDetailWrapper
 import com.cinch.ui.month.FixedEditWrapper
 import com.cinch.ui.month.IncomeEditWrapper
 import com.cinch.ui.month.MonthWrapper
+import com.cinch.ui.receipt.ReceiptReviewWrapper
 import com.cinch.ui.settings.SettingsWrapper
 import kotlinx.datetime.number
 
@@ -189,8 +190,10 @@ private fun cinchEntries(
         HomeWrapper(
             onOpenExpense = { id -> navigate(ExpenseEditRoute(id)) },
             onOpenHistory = { navigate(HistoryRoute()) },
+            onReceiptRead = { text -> navigate(ReceiptReviewRoute(text)) },
         )
     }
+    entry<ReceiptReviewRoute> { route -> ReceiptReviewWrapper(route = route, onDone = { goBack() }, onBack = goBack) }
     entry<HistoryRoute> { route ->
         HistoryWrapper(route = route, onOpenExpense = { id -> navigate(ExpenseEditRoute(id)) }, onBack = goBack)
     }
@@ -213,6 +216,7 @@ private fun cinchEntries(
             onOpenFixed = { id -> navigate(FixedEditRoute(id)) },
             onOpenDebt = { id -> navigate(DebtDetailRoute(id)) },
             onOpenInsights = { navigate(InsightsRoute()) },
+            onReceiptRead = { text -> navigate(ReceiptReviewRoute(text)) },
         )
     }
     entry<DebtDetailRoute> { route ->

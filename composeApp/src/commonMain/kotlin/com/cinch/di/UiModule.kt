@@ -9,6 +9,7 @@ import com.cinch.navigation.FixedEditRoute
 import com.cinch.navigation.HistoryRoute
 import com.cinch.navigation.IncomeEditRoute
 import com.cinch.navigation.InsightsRoute
+import com.cinch.navigation.ReceiptReviewRoute
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.budget.ActiveFixedExpenses
@@ -23,6 +24,7 @@ import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.receipt.ReceiptParser
 import com.cinch.shared.reconcile.Reconciler
 import com.cinch.shared.time.LocalClock
 import com.cinch.ui.budget.BudgetSetupViewModel
@@ -37,6 +39,7 @@ import com.cinch.ui.month.DebtDetailViewModel
 import com.cinch.ui.month.FixedEditViewModel
 import com.cinch.ui.month.IncomeEditViewModel
 import com.cinch.ui.month.MonthViewModel
+import com.cinch.ui.receipt.ReceiptReviewViewModel
 import com.cinch.ui.root.RootViewModel
 import com.cinch.ui.settings.SettingsViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -162,6 +165,31 @@ class UiModule {
         cards: CardRepository,
         clock: LocalClock,
     ): HistoryViewModel = HistoryViewModel(route, expenses, cards, clock)
+
+    @KoinViewModel
+    fun receiptReviewViewModel(
+        @InjectedParam route: ReceiptReviewRoute,
+        receiptParser: ReceiptParser,
+        entryParser: QuickEntryParser,
+        categorizer: Categorizer,
+        expenses: ExpenseRepository,
+        cards: CardRepository,
+        fixedExpenses: FixedExpenseRepository,
+        fixedPayments: FixedPayments,
+        clock: LocalClock,
+        @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
+    ): ReceiptReviewViewModel = ReceiptReviewViewModel(
+        route = route,
+        receiptParser = receiptParser,
+        entryParser = entryParser,
+        categorizer = categorizer,
+        expenses = expenses,
+        cards = cards,
+        fixedExpenses = fixedExpenses,
+        fixedPayments = fixedPayments,
+        clock = clock,
+        ioDispatcher = ioDispatcher,
+    )
 
     @KoinViewModel
     fun insightsViewModel(

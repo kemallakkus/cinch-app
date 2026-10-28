@@ -17,6 +17,10 @@ androidx-activityCompose = "1.12.0"
 androidx-core = "1.19.1"
 androidx-work = "2.12.0"
 
+# Fiş/fatura okuma (cihaz içi; Android). Tarayıcı Google Play hizmetleriyle gelir, metin tanıma uygulamaya gömülü.
+mlkitTextRecognition = "16.0.1"
+mlkitDocumentScanner = "16.0.0"
+
 # Jetbrains / KMP
 jetbrains-lifecycle = "2.11.0"
 jetbrains-navigation3 = "1.2.0-rc01"
@@ -56,6 +60,10 @@ jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:naviga
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-core = { module = "androidx.core:core", version.ref = "androidx-core" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidx-work" }
+
+# ML Kit
+mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkitTextRecognition" }
+mlkit-document-scanner = { module = "com.google.android.gms:play-services-mlkit-document-scanner", version.ref = "mlkitDocumentScanner" }
 
 # SQLDelight
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }

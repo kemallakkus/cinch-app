@@ -55,6 +55,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core)
             implementation(libs.androidx.work.runtime)
+            implementation(libs.mlkit.text.recognition)
+            implementation(libs.mlkit.document.scanner)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -19,6 +19,7 @@ import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.receipt.ReceiptParser
 import com.cinch.shared.reconcile.Reconciler
 import com.cinch.shared.time.LocalClock
 import com.cinch.shared.time.SystemLocalClock
@@ -45,6 +46,9 @@ class DomainModule {
 
     @Single
     fun quickEntryParser(categorizer: Categorizer): QuickEntryParser = QuickEntryParser(categorizer)
+
+    @Single
+    fun receiptParser(categorizer: Categorizer): ReceiptParser = ReceiptParser(categorizer)
 
     @Single
     fun budgetEngine(): BudgetEngine = BudgetEngine()

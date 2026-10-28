@@ -88,6 +88,7 @@ fun MonthScreen(
     onOpenFixed: (Long) -> Unit,
     onOpenDebt: (Long) -> Unit,
     onOpenInsights: () -> Unit = {},
+    onScanBill: (() -> Unit)? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     confettiTrigger: Int = 0,
 ) {
@@ -124,6 +125,9 @@ fun MonthScreen(
                             "harcama payına sayılmaz; ay hesabına girer. Ödeyince yanındaki yuvarlağa dokun.",
                         action = "Ekle",
                         onAction = onAddFixed,
+                        // Değişken faturayı elle yazmak yerine fotoğrafından okut; eşleşen sabit gider ödendi işaretlenir.
+                        secondaryAction = onScanBill?.let { "📷 Fatura" },
+                        onSecondaryAction = onScanBill ?: {},
                     )
                 }
                 val fixed = summary?.fixed.orEmpty()
@@ -269,7 +273,14 @@ private fun EmptySummary(onAddIncome: () -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(title: String, action: String, onAction: () -> Unit, info: String? = null) {
+private fun SectionHeader(
+    title: String,
+    action: String,
+    onAction: () -> Unit,
+    info: String? = null,
+    secondaryAction: String? = null,
+    onSecondaryAction: () -> Unit = {},
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp, start = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -277,6 +288,7 @@ private fun SectionHeader(title: String, action: String, onAction: () -> Unit, i
         Text(title, style = MaterialTheme.typography.titleMedium)
         if (info != null) InfoTip(title = title, text = info)
         Spacer(Modifier.weight(1f))
+        if (secondaryAction != null) TextButton(onClick = onSecondaryAction) { Text(secondaryAction) }
         TextButton(onClick = onAction) { Text(action) }
     }
 }

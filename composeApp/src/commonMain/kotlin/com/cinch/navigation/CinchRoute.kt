@@ -59,6 +59,13 @@ data class ExpenseEditRoute(val expenseId: Long) : CinchRoute
 @Serializable
 data class HistoryRoute(val categoryName: String? = null, val year: Int? = null, val month: Int? = null) : CinchRoute
 
+/**
+ * Fişten/faturadan okunanların onayı. [text] okunan yazı (satır satır); rotada durduğu için uygulama arka planda
+ * kapatılıp açılsa da kaybolmaz. Fotoğrafın kendisi saklanmaz.
+ */
+@Serializable
+data class ReceiptReviewRoute(val text: String) : CinchRoute
+
 /** "Nereye gitti?": ayın kategori dağılımı ve geçen ayla kıyas. [year]/[month] null = bu ay. */
 @Serializable
 data class InsightsRoute(val year: Int? = null, val month: Int? = null) : CinchRoute

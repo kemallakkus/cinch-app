@@ -9,6 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cinch.ui.receipt.ReceiptReadingDialog
+import com.cinch.ui.receipt.rememberReceiptFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -20,11 +22,13 @@ fun MonthWrapper(
     onOpenFixed: (Long) -> Unit,
     onOpenDebt: (Long) -> Unit,
     onOpenInsights: () -> Unit,
+    onReceiptRead: (String) -> Unit,
     viewModel: MonthViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confetti by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val receipt = rememberReceiptFlow(snackbarHostState, onRead = onReceiptRead)
 
     LifecycleResumeEffect(viewModel) {
         viewModel.onEvent(MonthEvent.Resumed)
@@ -50,7 +54,9 @@ fun MonthWrapper(
         onOpenFixed = onOpenFixed,
         onOpenDebt = onOpenDebt,
         onOpenInsights = onOpenInsights,
+        onScanBill = if (receipt.isSupported) receipt::scan else null,
         snackbarHostState = snackbarHostState,
         confettiTrigger = confetti,
     )
+    ReceiptReadingDialog(receipt)
 }

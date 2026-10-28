@@ -61,6 +61,8 @@ fun HomeScreen(
     confettiTrigger: Int = 0,
     onOpenExpense: (Long) -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onScanReceipt: (() -> Unit)? = null,
+    onPickReceipt: (() -> Unit)? = null,
     prompt: @Composable () -> Unit = {},
 ) {
     val cardNames = remember(state.cards) { state.cards.associate { it.id to it.name } }
@@ -81,7 +83,9 @@ fun HomeScreen(
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            bottomBar = { QuickEntryBar(state = state, onEvent = onEvent) },
+            bottomBar = {
+                QuickEntryBar(state = state, onEvent = onEvent, onScanReceipt = onScanReceipt, onPickReceipt = onPickReceipt)
+            },
         ) { padding ->
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {

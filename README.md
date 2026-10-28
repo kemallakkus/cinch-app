@@ -34,6 +34,8 @@ cinch-app/
 | `PayoffSimulator` | Kart kapanışı (~%4.9/ay faiz+vergi), taksit, esnek ödeme (Eminevim) | `debt/` |
 | `Reconciler` | Elle girilen güncel borç ile kayıt farkını bulur ("103 ₺ yazmayı unutmuşsun") | `reconcile/` |
 | `CoachRules` | 7 günün yerel bildirimlerini üretir; sessiz saat + günde max 2 + cümle varyasyonu | `coach/` |
+| `ReceiptParser` / `OcrLayout` | Fişten/faturadan okunan yazıdan tutar ("TOPLAM", "Ödenecek tutar"), tarih, son ödeme tarihi, mağaza adı, kategori ve kartla ödendi ipucu. `OcrLayout` sütunlara bölünmüş satırları ("TOPLAM" … "*96,15") görüntüdeki hizalarına göre birleştirir | `receipt/` |
+| `BillMatcher` | Abonelik faturasını sabit gidere eşler: ad faturada geçiyorsa ya da kurum adı hizmeti ele veriyorsa ("Enerjisa" → Elektrik, "İGDAŞ" → Doğalgaz) | `receipt/` |
 | `SpendingBreakdowns` | "Nereye gitti?": ayın serbest harcamalarının kategori dağılımı, geçen ayla kıyas, en çok para giden kelimeler | `budget/SpendingBreakdown.kt` |
 
 ## Veri katmanı ve DI (`shared/.../`)
@@ -88,6 +90,7 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 | Bugün | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (dokun → düzenle, sola kaydır → sil, "Geri al"); "Tüm geçmiş" | `ui/home/` |
 | Harcama düzenleme | Tutar, açıklama, kategori, tarih (takvim), "senin payın" (tamamı / yarısı / hiç) ve kart; silme. Tutar değişip açıklamaya dokunulmadıysa açıklamadaki sayı da güncellenir ("195 market" → "200 market"). Kategori düzeltilirse kelime öğrenilir. Sabit gider ödemesinde yalnız tutar, tarih ve kart | `ui/history/ExpenseEdit*` |
 | Geçmiş | Ay ay liste (gün başlıkları ve gün toplamı), kategori süzgeci; arama kutusu doluysa tüm geçmişte açıklama, not, kategori ve kart adında arar (Türkçe harf farkı gözetmez) | `ui/history/History*` |
+| Fiş / fatura okuma | Hızlı kayıt alanındaki 📷: "Fiş ya da fatura tara" (ML Kit belge tarayıcı: kenar bulur, kırpar) ya da "Galeriden seç". Yazı telefonda okunur, fotoğraf saklanmaz, internete gitmez. Onay ekranında tutar, açıklama, kategori, tarih ve kart dolu gelir; kullanıcı kontrol edip kaydeder. Faturada eşleşen sabit gider seçili gelir ve "Bu ay"da ödendi işaretlenir (bu ay zaten ödendiyse uyarır). "Bu ay"daki "📷 Fatura" düğmesi de aynı akışı açar. Şimdilik yalnız Android; iOS'ta düğmeler gizli | `receipt/` (platform), `ui/receipt/` |
 | Nereye gitti? | "Bu ay"daki özet kartından açılır: halka grafik, geçen ayla kıyas, kategoriler (pay çubuğu, ↑/↓ değişim; dokun → o ayın o kategorideki kayıtları), en çok para giden kelimeler; ay ay gezilir | `ui/insights/` |
 | Bu ay | Gelir − sabit giderler − harcamalar = elinde kalan; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir; borçlarda ilerleme çubuğu, borca dokun → detay: ilerleme, bitiş tahmini, ödeme ekle/sil) ve gelirler, ekleme/düzenleme | `ui/month/` |
 | Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu | `ui/settings/` |
@@ -158,5 +161,5 @@ Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.1
 - Bildirim saatlerini (sessiz saatler) saat seçiciyle ayarlama
 - Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
-- Opsiyonel cihaz içi OCR fiş okuma (ML Kit / Apple Vision)
+- iOS'ta fiş okuma: VisionKit tarayıcı + Vision metin tanıma (`composeApp/src/iosMain/.../receipt/ReceiptCapture.ios.kt` şimdilik boş)
 - iOS Xcode projesini oluşturma (`iosApp/` Swift kaynakları hazır)

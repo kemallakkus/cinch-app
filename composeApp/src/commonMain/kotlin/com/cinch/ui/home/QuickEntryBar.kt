@@ -19,10 +19,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -50,9 +52,18 @@ import com.cinch.ui.theme.colors
 import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 
-/** Ekranın altındaki kayıt alanı: klavye açılınca onunla birlikte yukarı çıkar. */
+/**
+ * Ekranın altındaki kayıt alanı: klavye açılınca onunla birlikte yukarı çıkar.
+ *
+ * @param onScanReceipt fiş/fatura tarayıcı; null ise (platformda yok) kamera düğmesi gösterilmez.
+ */
 @Composable
-fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
+fun QuickEntryBar(
+    state: HomeState,
+    onEvent: (HomeEvent) -> Unit,
+    onScanReceipt: (() -> Unit)? = null,
+    onPickReceipt: (() -> Unit)? = null,
+) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -80,6 +91,11 @@ fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(28.dp),
                     placeholder = { Text("Ne harcadın? ör. 195 market") },
+                    leadingIcon = if (onScanReceipt != null && onPickReceipt != null) {
+                        { ReceiptButton(onScan = onScanReceipt, onPick = onPickReceipt) }
+                    } else {
+                        null
+                    },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
                         imeAction = ImeAction.Done,
@@ -136,6 +152,33 @@ private fun EntryPreview(
                 details.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Fiş ya da fatura fotoğrafından kayıt: tara ya da galeriden seç. */
+@Composable
+private fun ReceiptButton(onScan: () -> Unit, onPick: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Rounded.PhotoCamera, contentDescription = "Fişten ekle")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("📷  Fiş ya da fatura tara") },
+                onClick = {
+                    expanded = false
+                    onScan()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("🖼️  Galeriden seç") },
+                onClick = {
+                    expanded = false
+                    onPick()
+                },
             )
         }
     }
