@@ -39,4 +39,5 @@ val NotificationType.title: String
         NotificationType.CATEGORY_SPIKE -> "Bu hafta nereye gitti?"
         NotificationType.CARD_DUE -> "Kart son ödeme"
         NotificationType.BACKUP_REMINDER -> "Yedek"
+        NotificationType.WEEK_LEFTOVER -> "Kumbara"
     }

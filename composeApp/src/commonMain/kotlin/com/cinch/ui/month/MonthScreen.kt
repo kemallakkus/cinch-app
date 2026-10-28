@@ -57,6 +57,7 @@ import com.cinch.shared.budget.SpendingBreakdown
 import com.cinch.shared.budget.Payday
 import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
+import com.cinch.shared.money.Money
 import com.cinch.ui.common.AnimatedMoneyText
 import com.cinch.ui.common.ConfettiBurst
 import com.cinch.ui.common.DonutChart
@@ -90,6 +91,7 @@ fun MonthScreen(
     onOpenInsights: () -> Unit = {},
     onScanBill: (() -> Unit)? = null,
     onOpenCashCalendar: () -> Unit = {},
+    onOpenSavings: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     confettiTrigger: Int = 0,
 ) {
@@ -116,6 +118,7 @@ fun MonthScreen(
                 }
 
                 item(key = "cashCalendar") { CashCalendarTeaser(onOpenCashCalendar) }
+                item(key = "savings") { SavingsTeaser(summary?.saved, onOpenSavings) }
 
                 state.breakdown?.takeIf { !it.isEmpty }?.let { breakdown ->
                     item(key = "breakdown") { BreakdownTeaser(breakdown, onClick = onOpenInsights) }
@@ -238,6 +241,13 @@ private fun SummaryCard(summary: MonthSummary) {
                 content,
             )
             SummaryLine("🛒 Harcamalar", "− ${summary.spent.display()}", content)
+            if (!summary.saved.isZero) {
+                SummaryLine(
+                    "🐷 Kumbaraya",
+                    (if (summary.saved.isNegative) "+ " else "− ") + summary.saved.absolute.display(),
+                    content,
+                )
+            }
         }
     }
 }
@@ -555,6 +565,33 @@ private fun CashCalendarTeaser(onClick: () -> Unit) {
             Text("Para takvimi", style = MaterialTheme.typography.titleMedium)
             Text(
                 "Maaşa kadar yeter mi? Gelir, ödeme ve kart günleri gün gün.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Kumbara girişi; bu ay ayrılan tutar varsa o da yazılır. */
+@Composable
+private fun SavingsTeaser(savedThisMonth: Money?, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text("🐷", style = MaterialTheme.typography.headlineSmall)
+        Column(Modifier.weight(1f)) {
+            Text("Kumbara", style = MaterialTheme.typography.titleMedium)
+            Text(
+                savedThisMonth?.takeIf { !it.isZero && !it.isNegative }?.let { "Bu ay ${it.display()} ayırdın 👏" }
+                    ?: "Haftadan artanı bir hedefe ayır: tatil, telefon, acil durum fonu…",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

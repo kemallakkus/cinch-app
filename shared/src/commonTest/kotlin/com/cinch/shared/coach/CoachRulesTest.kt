@@ -238,4 +238,17 @@ class CoachRulesTest {
         )
         assertTrue("44 gün önce" in old.single { it.type == NotificationType.BACKUP_REMINDER }.message)
     }
+
+    @Test
+    fun weekLeftover_onFirstDayOfWeek_whenLastWeekStayedUnderLimit() {
+        val lastWeek = listOf(Expense(date = LocalDate(2025, 1, 8), grossAmount = t(300)), Expense(date = LocalDate(2025, 1, 10), grossAmount = t(60)))
+
+        val monday = rules.planWeek(CoachInput(today = today, budget = status(), expenses = lastWeek), CoachConfig())
+        val leftover = monday.single { it.type == NotificationType.WEEK_LEFTOVER }
+        assertEquals(today, leftover.date)
+        assertTrue("340" in leftover.message, leftover.message) // 700 − 360
+
+        val over = listOf(Expense(date = LocalDate(2025, 1, 8), grossAmount = t(900)))
+        assertFalse(rules.planWeek(CoachInput(today = today, budget = status(), expenses = over), CoachConfig()).any { it.type == NotificationType.WEEK_LEFTOVER })
+    }
 }

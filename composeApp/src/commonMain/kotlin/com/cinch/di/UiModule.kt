@@ -29,6 +29,10 @@ import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.domain.repository.SavingsRepository
+import com.cinch.shared.gamification.BadgeStore
+import com.cinch.shared.gamification.ObserveGamification
+import com.cinch.shared.prefs.KeyValueStore
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.shared.receipt.ReceiptParser
 import com.cinch.shared.statement.StatementReader
@@ -47,6 +51,9 @@ import com.cinch.ui.month.DebtDetailViewModel
 import com.cinch.ui.month.FixedEditViewModel
 import com.cinch.ui.month.IncomeEditViewModel
 import com.cinch.ui.month.MonthViewModel
+import com.cinch.ui.progress.AchievementsViewModel
+import com.cinch.ui.progress.ProgressStripViewModel
+import com.cinch.ui.savings.SavingsViewModel
 import com.cinch.ui.receipt.ReceiptReviewViewModel
 import com.cinch.ui.root.RootViewModel
 import com.cinch.ui.settings.SettingsViewModel
@@ -231,6 +238,26 @@ class UiModule {
         clock = clock,
         ioDispatcher = ioDispatcher,
     )
+
+    @KoinViewModel
+    fun progressStripViewModel(
+        gamification: ObserveGamification,
+        badgeStore: BadgeStore,
+        savings: SavingsRepository,
+        prefs: KeyValueStore,
+        clock: LocalClock,
+    ): ProgressStripViewModel = ProgressStripViewModel(gamification, badgeStore, savings, prefs, clock)
+
+    @KoinViewModel
+    fun achievementsViewModel(gamification: ObserveGamification, clock: LocalClock): AchievementsViewModel =
+        AchievementsViewModel(gamification, clock)
+
+    @KoinViewModel
+    fun savingsViewModel(
+        savings: SavingsRepository,
+        gamification: ObserveGamification,
+        clock: LocalClock,
+    ): SavingsViewModel = SavingsViewModel(savings, gamification, clock)
 
     @KoinViewModel
     fun cashCalendarViewModel(

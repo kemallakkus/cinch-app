@@ -19,6 +19,7 @@ import com.cinch.ui.FakeClock
 import com.cinch.ui.FakeExpenseRepository
 import com.cinch.ui.FakeFixedExpenseRepository
 import com.cinch.ui.FakeIncomeRepository
+import com.cinch.ui.FakeSavingsRepository
 import com.cinch.ui.withTestMain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -57,7 +58,7 @@ class MonthViewModelTest {
             val expenses = FakeExpenseRepository()
             val clock = FakeClock(today)
             val vm = MonthViewModel(
-                ObserveMonthSummary(FakeBudgetRepository(), incomes, fixed, expenses),
+                ObserveMonthSummary(FakeBudgetRepository(), incomes, fixed, expenses, FakeSavingsRepository()),
                 ObserveSpendingBreakdown(FakeBudgetRepository(), expenses),
                 incomes,
                 FixedPayments(expenses),

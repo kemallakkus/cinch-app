@@ -11,6 +11,7 @@ import com.cinch.shared.data.SqlCorrectionStore
 import com.cinch.shared.data.SqlExpenseRepository
 import com.cinch.shared.data.SqlFixedExpenseRepository
 import com.cinch.shared.data.SqlIncomeRepository
+import com.cinch.shared.data.SqlSavingsRepository
 import com.cinch.shared.db.CinchDatabase
 import com.cinch.shared.db.DatabaseDriverFactory
 import com.cinch.shared.db.createDatabase
@@ -20,6 +21,7 @@ import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.domain.repository.SavingsRepository
 import com.cinch.shared.prefs.KeyValueStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +60,12 @@ class DataModule {
         db: CinchDatabase,
         @Named("ioDispatcher") io: CoroutineDispatcher,
     ): CardStatementRepository = SqlCardStatementRepository(db, io)
+
+    @Single
+    fun savingsRepository(
+        db: CinchDatabase,
+        @Named("ioDispatcher") io: CoroutineDispatcher,
+    ): SavingsRepository = SqlSavingsRepository(db, io)
 
     @Single
     fun budgetRepository(

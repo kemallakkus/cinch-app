@@ -11,7 +11,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.dp
 import com.cinch.ui.notifications.NotificationPromptWrapper
+import com.cinch.ui.progress.ProgressStripWrapper
 import com.cinch.ui.receipt.ReceiptReadingDialog
 import com.cinch.ui.receipt.rememberReceiptFlow
 import kotlinx.coroutines.launch
@@ -22,8 +27,11 @@ fun HomeWrapper(
     onOpenExpense: (Long) -> Unit,
     onOpenHistory: () -> Unit,
     onReceiptRead: (String) -> Unit,
+    onOpenAchievements: () -> Unit,
+    onOpenSavings: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
+    val scope = rememberCoroutineScope()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val receipt = rememberReceiptFlow(snackbarHostState) { scan -> onReceiptRead(scan.text) }
@@ -63,7 +71,19 @@ fun HomeWrapper(
         onOpenHistory = onOpenHistory,
         onScanReceipt = if (receipt.isSupported) receipt::scan else null,
         onPickReceipt = if (receipt.isSupported) receipt::pickFromGallery else null,
-        prompt = { NotificationPromptWrapper() },
+        prompt = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                NotificationPromptWrapper()
+                ProgressStripWrapper(
+                    onOpenAchievements = onOpenAchievements,
+                    onOpenSavings = onOpenSavings,
+                    onCelebrate = { message ->
+                        confetti++
+                        scope.launch { snackbarHostState.showSnackbar(message) }
+                    },
+                )
+            }
+        },
     )
     ReceiptReadingDialog(receipt)
 }

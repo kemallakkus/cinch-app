@@ -199,6 +199,8 @@ class ExpenseEditViewModelTest {
         assertEquals("dün 1300 migros", replaceAmountInText("dün 1.250 migros", tl(1_250), tl(1_300)))
         assertEquals("99 kahve", replaceAmountInText("120,50 kahve", Money(12_050, Currency.TRY), tl(99)))
         assertEquals("yarım kilo kahve", replaceAmountInText("yarım kilo kahve", tl(80), tl(90)))
+        assertEquals("45market", replaceAmountInText("40market", tl(40), tl(45))) // bitişik yazılmış
+        assertEquals("dün 200tl market", replaceAmountInText("dün 195tl market", tl(195), tl(200)))
         // Metindeki sayı tutar değilse dokunulmaz ("2 kahve" 80 TL).
         assertEquals("2 kahve", replaceAmountInText("2 kahve", tl(80), tl(90)))
     }

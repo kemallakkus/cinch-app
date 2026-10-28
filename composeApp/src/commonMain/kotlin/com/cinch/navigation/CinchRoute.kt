@@ -75,6 +75,14 @@ data class ReceiptReviewRoute(val text: String) : CinchRoute
 @Serializable
 data class StatementReviewRoute(val cardId: Long? = null, val ocr: String) : CinchRoute
 
+/** Seriler ve rozetler. */
+@Serializable
+data object AchievementsRoute : CinchRoute
+
+/** Kumbara: biriktirme hedefleri. */
+@Serializable
+data object SavingsRoute : CinchRoute
+
 /** Para takvimi: gün gün giriş-çıkış ve "maaşa kadar yeter mi?". */
 @Serializable
 data object CashCalendarRoute : CinchRoute

@@ -60,6 +60,34 @@ class QuickEntryParserTest {
     }
 
     @Test
+    fun gluedAmount_isSplitFromWord() {
+        val r = parser.parse("40market", today)
+        assertEquals(4000, r.grossAmount?.minor)
+        assertEquals(Category.MARKET, r.category)
+        assertEquals(listOf("market"), r.tokens)
+
+        val withCurrency = parser.parse("195tl market", today)
+        assertEquals(19500, withCurrency.grossAmount?.minor)
+        assertEquals(listOf("market"), withCurrency.tokens) // "tl" kelime sayılmaz
+
+        val decimal = parser.parse("dün 120,50kahve", today)
+        assertEquals(12050, decimal.grossAmount?.minor)
+        assertEquals(Category.YEMEK, decimal.category)
+        assertEquals(LocalDate(2025, 1, 14), decimal.date)
+    }
+
+    @Test
+    fun gluedAmount_onlyWithoutStandaloneAmount_andNotForUnits() {
+        assertEquals(4500, parser.parse("3kg elma 45", today).grossAmount?.minor) // ayrı tutar öncelikli
+        assertNull(parser.parse("3kg elma", today).grossAmount) // ölçü, tutar değil
+        assertNull(parser.parse("2li paket", today).grossAmount)
+        assertNull(parser.parse("a101", today).grossAmount) // harfle başlayan mağaza adı
+        assertNull(GluedAmount.split("40'lık"))
+        assertEquals(GluedAmount.Split("40", "market"), GluedAmount.split("40market"))
+        assertNull(GluedAmount.split("1.250")) // zaten ayrı sayı
+    }
+
+    @Test
     fun noAmount() {
         val r = parser.parse("market", today)
         assertNull(r.grossAmount)

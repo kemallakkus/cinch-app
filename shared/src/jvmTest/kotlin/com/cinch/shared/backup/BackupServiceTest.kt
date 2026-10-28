@@ -8,6 +8,7 @@ import com.cinch.shared.data.SqlCorrectionStore
 import com.cinch.shared.data.SqlExpenseRepository
 import com.cinch.shared.data.SqlFixedExpenseRepository
 import com.cinch.shared.data.SqlIncomeRepository
+import com.cinch.shared.data.SqlSavingsRepository
 import com.cinch.shared.data.newDatabase
 import com.cinch.shared.db.CinchDatabase
 import com.cinch.shared.domain.Card
@@ -19,6 +20,8 @@ import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
 import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
+import com.cinch.shared.domain.SavingsDeposit
+import com.cinch.shared.domain.SavingsGoal
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.coroutines.flow.first
@@ -47,6 +50,8 @@ class BackupServiceTest {
             SqlIncomeRepository(db, io).all(),
             SqlFixedExpenseRepository(db, io).all(),
             SqlCardStatementRepository(db, io).observeLatestPerCard().first(),
+            SqlSavingsRepository(db, io).observeGoals().first(),
+            SqlSavingsRepository(db, io).observeDeposits().first(),
         )
     }
 
@@ -68,6 +73,9 @@ class BackupServiceTest {
             CardStatement(cardId = qnb, readOn = day, dueDate = LocalDate(2026, 11, 6), statementBalance = tl(52_331), availableLimit = tl(-296)),
         )
         SqlCorrectionStore(source).learn("zipzip", Category.YEMEK)
+        val savings = SqlSavingsRepository(source, io)
+        val trip = savings.addGoal(SavingsGoal(name = "Tatil", emoji = "🏖️", target = tl(20_000), createdOn = day))
+        savings.addDeposit(SavingsDeposit(goalId = trip, amount = tl(340), date = day, note = "Haftalık artan"))
         val file = BackupService(source, SqlCorrectionStore(source), io).export(LocalDateTime(2026, 10, 28, 12, 0))
 
         // Hedefte başka veri var: geri yükleme hepsini yedektekilerle değiştirir.

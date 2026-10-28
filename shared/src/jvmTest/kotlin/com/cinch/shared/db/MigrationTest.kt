@@ -32,8 +32,8 @@ class MigrationTest {
     }
 
     @Test
-    fun schemaVersionIsSix() {
-        assertEquals(6L, CinchDatabase.Schema.version)
+    fun schemaVersionIsSeven() {
+        assertEquals(7L, CinchDatabase.Schema.version)
     }
 
     @Test
@@ -149,5 +149,16 @@ class MigrationTest {
         assertEquals(null, card.last4)
         assertEquals("CREDIT", card.type)
         assertTrue(queries.statementsForCard(card.id).executeAsList().isEmpty())
+    }
+
+    @Test
+    fun v6To7_addsEmptySavingsTables() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+
+        CinchDatabase.Schema.migrate(driver, 6, 7)
+
+        val queries = CinchDatabase(driver).cinchQueries
+        assertTrue(queries.allGoals().executeAsList().isEmpty())
+        assertTrue(queries.allDeposits().executeAsList().isEmpty())
     }
 }

@@ -16,6 +16,7 @@ import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyInput
+import com.cinch.shared.parser.GluedAmount
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.shared.time.LocalClock
 import com.cinch.ui.common.toInputText
@@ -208,15 +209,18 @@ class ExpenseEditViewModel(
 }
 
 /**
- * Metindeki eski tutarı yenisiyle değiştirir: "195 market" + 200 ₺ → "200 market". Eski tutar metinde
- * sayı olarak geçmiyorsa (ör. "yarım kilo kahve") metin olduğu gibi kalır.
+ * Metindeki eski tutarı yenisiyle değiştirir: "195 market" + 200 ₺ → "200 market", bitişikse "195market" →
+ * "200market". Eski tutar metinde sayı olarak geçmiyorsa (ör. "yarım kilo kahve") metin olduğu gibi kalır.
  */
 internal fun replaceAmountInText(text: String, old: Money, new: Money): String {
     if (old == new) return text
     val words = text.split(' ')
-    val index = words.indexOfFirst { word ->
-        word.firstOrNull()?.isDigit() == true && MoneyInput.parse(word, old.currency) == old
+    for ((i, word) in words.withIndex()) {
+        if (word.firstOrNull()?.isDigit() != true) continue
+        val number = GluedAmount.split(word)?.number ?: word
+        if (MoneyInput.parse(number, old.currency) != old) continue
+        val suffix = word.substring(number.length)
+        return words.toMutableList().also { it[i] = new.toInputText() + suffix }.joinToString(" ")
     }
-    if (index < 0) return text
-    return words.toMutableList().also { it[index] = new.toInputText() }.joinToString(" ")
+    return text
 }

@@ -96,6 +96,25 @@ CREATE TABLE IF NOT EXISTS card_statement (
     available_limit_minor INTEGER
 );
 
+-- Kumbara: biriktirme hedefleri ("Tatil: 20.000 ₺") ve hedeflere atılan paralar (eksi: çekilen).
+CREATE TABLE IF NOT EXISTS savings_goal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    emoji TEXT NOT NULL DEFAULT '🐷',
+    target_minor INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    created_epoch_day INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS savings_deposit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    goal_id INTEGER NOT NULL,
+    amount_minor INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    date_epoch_day INTEGER NOT NULL,
+    note TEXT NOT NULL DEFAULT ''
+);
+
 -- ───────── expense ─────────
 insertExpense:
 INSERT INTO expense(date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text, tokens, fixed_expense_id)
@@ -232,6 +251,31 @@ SELECT * FROM expense WHERE fixed_expense_id IS NOT NULL ORDER BY date_epoch_day
 deleteFixedExpense:
 DELETE FROM fixed_expense WHERE id = ?;
 
+-- ───────── kumbara ─────────
+allGoals:
+SELECT * FROM savings_goal ORDER BY id;
+
+insertGoal:
+INSERT INTO savings_goal(name, emoji, target_minor, currency, created_epoch_day) VALUES (?, ?, ?, ?, ?);
+
+updateGoal:
+UPDATE savings_goal SET name = ?, emoji = ?, target_minor = ? WHERE id = ?;
+
+deleteGoal:
+DELETE FROM savings_goal WHERE id = ?;
+
+allDeposits:
+SELECT * FROM savings_deposit ORDER BY date_epoch_day, id;
+
+insertDeposit:
+INSERT INTO savings_deposit(goal_id, amount_minor, currency, date_epoch_day, note) VALUES (?, ?, ?, ?, ?);
+
+deleteDeposit:
+DELETE FROM savings_deposit WHERE id = ?;
+
+deleteDepositsForGoal:
+DELETE FROM savings_deposit WHERE goal_id = ?;
+
 -- ───────── yedek / geri yükleme ─────────
 -- Geri yüklemede her şey silinip yedekteki satırlar kimlikleriyle yazılır (harcama → kart, sabit gider bağları korunur).
 
@@ -255,6 +299,18 @@ DELETE FROM category_correction;
 
 deleteBudget:
 DELETE FROM budget_config;
+
+deleteAllGoals:
+DELETE FROM savings_goal;
+
+deleteAllDeposits:
+DELETE FROM savings_deposit;
+
+restoreGoal:
+INSERT INTO savings_goal(id, name, emoji, target_minor, currency, created_epoch_day) VALUES (?, ?, ?, ?, ?, ?);
+
+restoreDeposit:
+INSERT INTO savings_deposit(id, goal_id, amount_minor, currency, date_epoch_day, note) VALUES (?, ?, ?, ?, ?, ?);
 
 restoreBudget:
 INSERT INTO budget_config(id, weekly_limit_minor, currency, week_start_iso, weekly_goal_minor, salary_day)

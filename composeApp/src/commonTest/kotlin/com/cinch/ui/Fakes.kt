@@ -9,6 +9,9 @@ import com.cinch.shared.domain.CardStatement
 import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Income
+import com.cinch.shared.domain.SavingsDeposit
+import com.cinch.shared.domain.SavingsGoal
+import com.cinch.shared.domain.repository.SavingsRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.domain.repository.CardRepository
@@ -129,6 +132,41 @@ class FakeCardStatementRepository : CardStatementRepository {
         val id = nextId++
         all.update { it + statement.copy(id = id) }
         return id
+    }
+}
+
+class FakeSavingsRepository : SavingsRepository {
+    val goals = MutableStateFlow<List<SavingsGoal>>(emptyList())
+    val deposits = MutableStateFlow<List<SavingsDeposit>>(emptyList())
+    private var nextGoalId = 1L
+    private var nextDepositId = 1L
+
+    override fun observeGoals(): Flow<List<SavingsGoal>> = goals
+    override fun observeDeposits(): Flow<List<SavingsDeposit>> = deposits.map { list -> list.sortedWith(compareBy({ it.date }, { it.id })) }
+
+    override suspend fun addGoal(goal: SavingsGoal): Long {
+        val id = nextGoalId++
+        goals.update { it + goal.copy(id = id) }
+        return id
+    }
+
+    override suspend fun updateGoal(goal: SavingsGoal) {
+        goals.update { list -> list.map { if (it.id == goal.id) goal else it } }
+    }
+
+    override suspend fun deleteGoal(id: Long) {
+        goals.update { list -> list.filterNot { it.id == id } }
+        deposits.update { list -> list.filterNot { it.goalId == id } }
+    }
+
+    override suspend fun addDeposit(deposit: SavingsDeposit): Long {
+        val id = nextDepositId++
+        deposits.update { it + deposit.copy(id = id) }
+        return id
+    }
+
+    override suspend fun deleteDeposit(id: Long) {
+        deposits.update { list -> list.filterNot { it.id == id } }
     }
 }
 

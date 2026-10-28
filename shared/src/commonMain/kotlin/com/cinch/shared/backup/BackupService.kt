@@ -28,11 +28,35 @@ data class BackupFile(
     val fixedExpenses: List<FixedExpenseRow> = emptyList(),
     val statements: List<StatementRow> = emptyList(),
     val corrections: List<CorrectionRow> = emptyList(),
+    val goals: List<GoalRow> = emptyList(),
+    val deposits: List<DepositRow> = emptyList(),
 ) {
     companion object {
         const val FORMAT = "cinch-backup"
-        const val VERSION = 1
+
+        /** 2: kumbara eklendi. Eski uygulama yeni yedeği reddeder (kumbara sessizce kaybolmasın). */
+        const val VERSION = 2
     }
+
+    @Serializable
+    data class GoalRow(
+        val id: Long,
+        val name: String,
+        val emoji: String,
+        val targetMinor: Long,
+        val currency: String,
+        val createdEpochDay: Long,
+    )
+
+    @Serializable
+    data class DepositRow(
+        val id: Long,
+        val goalId: Long,
+        val amountMinor: Long,
+        val currency: String,
+        val dateEpochDay: Long,
+        val note: String = "",
+    )
 
     @Serializable
     data class BudgetRow(
@@ -186,6 +210,12 @@ class BackupService(
                 )
             },
             corrections = queries.allCorrections().executeAsList().map { BackupFile.CorrectionRow(it.keyword, it.category) },
+            goals = queries.allGoals().executeAsList().map {
+                BackupFile.GoalRow(it.id, it.name, it.emoji, it.target_minor, it.currency, it.created_epoch_day)
+            },
+            deposits = queries.allDeposits().executeAsList().map {
+                BackupFile.DepositRow(it.id, it.goal_id, it.amount_minor, it.currency, it.date_epoch_day, it.note)
+            },
         )
         json.encodeToString(BackupFile.serializer(), file)
     }
@@ -215,6 +245,8 @@ class BackupService(
                 queries.deleteAllIncomes()
                 queries.deleteAllCards()
                 queries.deleteAllCorrections()
+                queries.deleteAllDeposits()
+                queries.deleteAllGoals()
                 queries.deleteBudget()
 
                 file.budget?.let {
@@ -244,6 +276,10 @@ class BackupService(
                     )
                 }
                 file.corrections.forEach { queries.upsertCorrection(it.keyword, it.category) }
+                file.goals.forEach { queries.restoreGoal(it.id, it.name, it.emoji, it.targetMinor, it.currency, it.createdEpochDay) }
+                file.deposits.forEach {
+                    queries.restoreDeposit(it.id, it.goalId, it.amountMinor, it.currency, it.dateEpochDay, it.note)
+                }
             }
         }
         corrections.reload()

@@ -21,6 +21,9 @@ androidx-work = "2.12.0"
 mlkitTextRecognition = "16.0.1"
 mlkitDocumentScanner = "16.0.0"
 
+# Ana ekran widget'ı (Android)
+glance = "1.1.1"
+
 # Jetbrains / KMP
 jetbrains-lifecycle = "2.11.0"
 jetbrains-navigation3 = "1.2.0-rc01"
@@ -61,6 +64,9 @@ jetbrains-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:naviga
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 androidx-core = { module = "androidx.core:core", version.ref = "androidx-core" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidx-work" }
+
+# Glance (Android ana ekran widget'ı)
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 
 # ML Kit
 mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkitTextRecognition" }

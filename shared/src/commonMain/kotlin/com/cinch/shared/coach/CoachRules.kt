@@ -30,6 +30,7 @@ enum class NotificationType {
     CATEGORY_SPIKE,     // bu hafta bir kategoriye geçen haftadan belirgin fazla gitti
     CARD_DUE,           // kredi kartı son ödeme günü yaklaşıyor (banka ekranından okunan)
     BACKUP_REMINDER,    // uzun süredir yedek alınmadı
+    WEEK_LEFTOVER,      // geçen hafta sınırın altında kalındı: artanı kumbaraya at
 }
 
 /**
@@ -125,6 +126,7 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(categorySpike(input, config))
             addAll(cardDue(input, config))
             addAll(backupReminder(input, config))
+            addAll(weekLeftover(input, config))
         }
 
     private fun horizon(today: LocalDate): List<LocalDate> =
@@ -410,6 +412,28 @@ class CoachRules(private val horizonDays: Int = 7) {
             }
         }
         return listOf(CoachNotification(day, LocalTime(19, 0), NotificationType.BACKUP_REMINDER, 35, msg))
+    }
+
+    /**
+     * Haftanın ilk günü 10:30: geçen hafta kayıt tutulmuş ve sınırın altında kalınmışsa artanı kumbaraya atmayı önerir.
+     * Yalnız o gün üretilir (gösterim anında yeniden hesaplanır).
+     */
+    private fun weekLeftover(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val weekStart = input.budget.weekStart
+        if (input.today != weekStart) return emptyList()
+        val currency = input.budget.weeklyLimit.currency
+        val lastWeek = input.expenses.filter {
+            it.date >= weekStart.minusDays(7) && it.date < weekStart && it.grossAmount.currency == currency
+        }
+        if (lastWeek.isEmpty()) return emptyList()
+        val left = input.budget.weeklyLimit.minor - lastWeek.sumOf { it.chargeableAmount.minor }
+        if (left <= 0) return emptyList()
+        val amount = MoneyFormatter.format(Money(left, currency), config.locale)
+        val msg = when (config.locale) {
+            AppLocale.TR -> "Geçen hafta $amount artırdın 🎉 Kumbarana atmak için Cinch'e bir dokun."
+            AppLocale.EN -> "You saved $amount under your limit last week 🎉 Put it in a savings goal."
+        }
+        return listOf(CoachNotification(weekStart, LocalTime(10, 30), NotificationType.WEEK_LEFTOVER, 72, msg))
     }
 
     // ───────────────────────── Kısıtlar ─────────────────────────

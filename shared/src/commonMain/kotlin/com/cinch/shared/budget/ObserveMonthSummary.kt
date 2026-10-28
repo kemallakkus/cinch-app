@@ -6,6 +6,7 @@ import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.domain.repository.SavingsRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.parser.minusDays
@@ -24,6 +25,7 @@ import kotlinx.datetime.plus
  * @param fixed sabit giderlerin bu ayki durumları (ödendi / bekliyor), ödeme günü sırasıyla.
  * @param fixedTotal sabit giderlerin ay toplamı: ödenenlerin gerçek, bekleyenlerin planlanan tutarı.
  * @param spent serbest harcamalar (kullanıcının payı); sabit gider ödemeleri hariç.
+ * @param saved bu ay kumbaraya ayrılan (çekilenler düşülmüş); elinde kalandan düşülür.
  * @param nextPayday bugünden itibaren ilk gelir günü; günü girilmiş gelir yoksa null.
  */
 data class MonthSummary(
@@ -36,6 +38,7 @@ data class MonthSummary(
     val spent: Money,
     val remaining: Money,
     val nextPayday: Payday?,
+    val saved: Money = Money.zero(income.currency),
 ) {
     val hasIncome: Boolean get() = !income.isZero
 
@@ -59,6 +62,7 @@ class ObserveMonthSummary(
     private val incomes: IncomeRepository,
     private val fixedExpenses: FixedExpenseRepository,
     private val expenses: ExpenseRepository,
+    private val savings: SavingsRepository,
 ) {
 
     private data class Inputs(
@@ -75,13 +79,21 @@ class ObserveMonthSummary(
             Inputs(currency, incomeList.filter { it.currency == currency }, fixed.filter { it.currency == currency })
         }.flatMapLatest { inputs ->
             // Borç ilerlemesi (taksit sayısı, kalan borç) geçmiş tüm ödemelerden hesaplanır.
-            combine(expenses.observeBetween(monthStart, monthEnd), expenses.observeFixedPayments()) { all, payments ->
+            combine(
+                expenses.observeBetween(monthStart, monthEnd),
+                expenses.observeFixedPayments(),
+                savings.observeDeposits(),
+            ) { all, payments, deposits ->
                 val monthExpenses = all.filter { it.grossAmount.currency == inputs.currency }
                 val income = Money.sum(inputs.incomes.map { it.amount }, inputs.currency)
                 val statuses = fixedStatuses(inputs.fixed, payments, today)
                 val fixed = statuses.filterNot { it.isArchived }
                 val fixedTotal = Money.sum(fixed.map { it.amountForMonth }, inputs.currency)
                 val spent = Money.sum(monthExpenses.discretionary().map { it.chargeableAmount }, inputs.currency)
+                val saved = Money(
+                    deposits.filter { it.date in monthStart..monthEnd && it.amount.currency == inputs.currency }.sumOf { it.amount.minor },
+                    inputs.currency,
+                )
                 MonthSummary(
                     monthStart = monthStart,
                     monthEnd = monthEnd,
@@ -90,8 +102,9 @@ class ObserveMonthSummary(
                     finishedFixed = statuses.filter { it.isArchived },
                     fixedTotal = fixedTotal,
                     spent = spent,
-                    remaining = income - fixedTotal - spent,
+                    remaining = income - fixedTotal - spent - saved,
                     nextPayday = nextPayday(inputs.incomes, today),
+                    saved = saved,
                 )
             }
         }

@@ -21,6 +21,9 @@ import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.domain.repository.SavingsRepository
+import com.cinch.shared.gamification.BadgeStore
+import com.cinch.shared.gamification.ObserveGamification
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.shared.prefs.KeyValueStore
@@ -97,7 +100,8 @@ class DomainModule {
         incomes: IncomeRepository,
         fixedExpenses: FixedExpenseRepository,
         expenses: ExpenseRepository,
-    ): ObserveMonthSummary = ObserveMonthSummary(budgets, incomes, fixedExpenses, expenses)
+        savings: SavingsRepository,
+    ): ObserveMonthSummary = ObserveMonthSummary(budgets, incomes, fixedExpenses, expenses, savings)
 
     @Factory
     fun observeSpendingBreakdown(budgets: BudgetRepository, expenses: ExpenseRepository): ObserveSpendingBreakdown =
@@ -118,6 +122,19 @@ class DomainModule {
 
     @Single
     fun cashBalanceStore(prefs: KeyValueStore): CashBalanceStore = CashBalanceStore(prefs)
+
+    @Single
+    fun badgeStore(prefs: KeyValueStore): BadgeStore = BadgeStore(prefs)
+
+    @Factory
+    fun observeGamification(
+        budgets: BudgetRepository,
+        expenses: ExpenseRepository,
+        savings: SavingsRepository,
+        fixedExpenses: FixedExpenseRepository,
+        backups: BackupTracker,
+        badgeStore: BadgeStore,
+    ): ObserveGamification = ObserveGamification(budgets, expenses, savings, fixedExpenses, backups, badgeStore)
 
     @Factory
     fun activeFixedExpenses(

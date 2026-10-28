@@ -4,4 +4,28 @@
     <!-- Android 13+ koç bildirimleri için çalışma zamanı izni. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <application>
+        <!-- Ana ekran widget'ı: bugün kalan pay, hafta, seri ve hızlı kayıt düğmesi. -->
+        <receiver
+            android:name="com.cinch.widget.TodayWidgetReceiver"
+            android:exported="true"
+            android:label="Cinch · Bugün">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_widget_info" />
+        </receiver>
+
+        <!-- Widget'tan açılan küçük hızlı kayıt penceresi; uygulamanın ana ekranını açmaz. -->
+        <activity
+            android:name="com.cinch.widget.QuickAddActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:windowSoftInputMode="adjustResize|stateVisible" />
+    </application>
+
 </manifest>

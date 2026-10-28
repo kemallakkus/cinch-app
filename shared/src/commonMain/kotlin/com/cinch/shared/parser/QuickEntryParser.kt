@@ -69,7 +69,7 @@ class QuickEntryParser(
         currency: Currency = defaultCurrency,
         cards: List<Card> = emptyList(),
     ): ParsedEntry {
-        val tokens = TextNormalizer.tokenize(raw)
+        val tokens = splitGluedAmount(TextNormalizer.tokenize(raw))
         val normalized = tokens.map { TextNormalizer.normalize(it) }
 
         val amount = extractAmount(tokens)?.let { Money.ofDouble(it, currency) }
@@ -102,6 +102,22 @@ class QuickEntryParser(
     // ───────────────────────── Tutar ─────────────────────────
 
     private val amountRegex = Regex("^\\d[\\d.,]*$")
+
+    /**
+     * Ayrı yazılmış tutar yoksa ilk bitişik tutarı ("40market") iki kelimeye böler; sonrası her zamanki gibi
+     * çalışır ("market" kategoriye ve öğrenmeye girer). Ayrı tutar varsa ("3kg elma 45") ona dokunulmaz.
+     */
+    private fun splitGluedAmount(tokens: List<String>): List<String> {
+        if (tokens.any { amountRegex.matches(it) }) return tokens
+        for ((i, token) in tokens.withIndex()) {
+            val split = GluedAmount.split(token) ?: continue
+            return tokens.toMutableList().apply {
+                removeAt(i)
+                addAll(i, listOf(split.number, split.word).filter { it.isNotEmpty() })
+            }
+        }
+        return tokens
+    }
 
     private fun extractAmount(tokens: List<String>): Double? {
         val token = tokens.firstOrNull { amountRegex.matches(it) } ?: return null

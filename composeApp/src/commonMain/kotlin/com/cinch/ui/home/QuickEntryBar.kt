@@ -32,12 +32,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -56,6 +59,7 @@ import kotlin.math.roundToInt
  * Ekranın altındaki kayıt alanı: klavye açılınca onunla birlikte yukarı çıkar.
  *
  * @param onScanReceipt fiş/fatura tarayıcı; null ise (platformda yok) kamera düğmesi gösterilmez.
+ * @param autoFocus açılınca yazma alanına odaklan (widget'tan açılan hızlı kayıt penceresi).
  */
 @Composable
 fun QuickEntryBar(
@@ -63,7 +67,13 @@ fun QuickEntryBar(
     onEvent: (HomeEvent) -> Unit,
     onScanReceipt: (() -> Unit)? = null,
     onPickReceipt: (() -> Unit)? = null,
+    autoFocus: Boolean = false,
+    header: (@Composable () -> Unit)? = null,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) focusRequester.requestFocus()
+    }
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -75,6 +85,7 @@ fun QuickEntryBar(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            header?.invoke()
             state.parsed?.let { parsed ->
                 EntryPreview(
                     parsed = parsed,
@@ -88,7 +99,7 @@ fun QuickEntryBar(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     state = state.entry,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
                     shape = RoundedCornerShape(28.dp),
                     placeholder = { Text("Ne harcadın? ör. 195 market") },
                     leadingIcon = if (onScanReceipt != null && onPickReceipt != null) {

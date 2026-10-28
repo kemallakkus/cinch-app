@@ -1,6 +1,7 @@
 package com.cinch.shared.budget
 
 import com.cinch.shared.data.SqlBudgetRepository
+import com.cinch.shared.data.SqlSavingsRepository
 import com.cinch.shared.data.SqlExpenseRepository
 import com.cinch.shared.data.SqlFixedExpenseRepository
 import com.cinch.shared.data.SqlIncomeRepository
@@ -8,6 +9,8 @@ import com.cinch.shared.data.newDatabase
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Income
+import com.cinch.shared.domain.SavingsDeposit
+import com.cinch.shared.domain.SavingsGoal
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.coroutines.flow.first
@@ -30,6 +33,7 @@ class ObserveMonthSummaryTest {
         val fixed: SqlFixedExpenseRepository,
         val expenses: SqlExpenseRepository,
         val observe: ObserveMonthSummary,
+        val savings: SqlSavingsRepository,
     )
 
     private fun TestScope.fixture(): Fixture {
@@ -38,7 +42,12 @@ class ObserveMonthSummaryTest {
         val incomes = SqlIncomeRepository(db, io)
         val expenses = SqlExpenseRepository(db, io)
         val fixed = SqlFixedExpenseRepository(db, io)
-        return Fixture(incomes, fixed, expenses, ObserveMonthSummary(SqlBudgetRepository(db, io), incomes, fixed, expenses))
+        val savings = SqlSavingsRepository(db, io)
+        return Fixture(
+            incomes, fixed, expenses,
+            ObserveMonthSummary(SqlBudgetRepository(db, io), incomes, fixed, expenses, savings),
+            savings,
+        )
     }
 
     @Test
@@ -112,5 +121,20 @@ class ObserveMonthSummaryTest {
         assertEquals(tl(1_000), after.spent)
         assertEquals(tl(23_100), after.remaining)
         assertEquals(tl(5_500), after.weeklySuggestion) // (40.000 − 15.900) / 4,35 ≈ 5.542 → 50'liğe aşağı
+    }
+
+    @Test
+    fun savingsThisMonth_areSetAsideFromRemaining() = runTest {
+        val f = fixture()
+        f.incomes.add(Income(name = "Maaş", amount = tl(40_000), dayOfMonth = 15))
+        val goal = f.savings.addGoal(SavingsGoal(name = "Tatil", target = tl(20_000), createdOn = today))
+        f.savings.addDeposit(SavingsDeposit(goalId = goal, amount = tl(1_000), date = LocalDate(2025, 1, 6)))
+        f.savings.addDeposit(SavingsDeposit(goalId = goal, amount = tl(-200), date = LocalDate(2025, 1, 10))) // çekildi
+        f.savings.addDeposit(SavingsDeposit(goalId = goal, amount = tl(5_000), date = LocalDate(2024, 12, 20))) // geçen ay
+
+        val summary = f.observe(today).first()
+
+        assertEquals(tl(800), summary.saved)
+        assertEquals(tl(39_200), summary.remaining)
     }
 }
