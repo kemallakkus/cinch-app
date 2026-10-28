@@ -44,6 +44,26 @@ class FakeExpenseRepository : ExpenseRepository {
     override suspend fun between(from: LocalDate, to: LocalDate): List<Expense> =
         all.value.filter { it.date in from..to }
 
+    override fun observeAll(): Flow<List<Expense>> = all.map { list -> list.sortedWith(compareBy({ it.date }, { it.id })) }
+
+    override suspend fun get(id: Long): Expense? = all.value.firstOrNull { it.id == id }
+
+    override suspend fun update(expense: Expense) {
+        // Gerçek depo gibi para birimi ve sabit gider bağı korunur.
+        all.update { list ->
+            list.map {
+                if (it.id == expense.id) {
+                    expense.copy(
+                        grossAmount = expense.grossAmount.copy(currency = it.grossAmount.currency),
+                        fixedExpenseId = it.fixedExpenseId,
+                    )
+                } else {
+                    it
+                }
+            }
+        }
+    }
+
     override suspend fun forCard(cardId: Long): List<Expense> = all.value.filter { it.cardId == cardId }
 
     override fun observeFixedPayments(): Flow<List<Expense>> = all.map { list -> list.filter { it.isFixedPayment } }

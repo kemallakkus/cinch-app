@@ -87,4 +87,30 @@ class QuickEntryParserTest {
         assertEquals(Category.DIGER, r.category)
         assertTrue(r.tokens.contains("zipzip"))
     }
+
+    @Test
+    fun weekday_isMostRecentPastOne() {
+        val r = parser.parse("cuma 300 market", today)
+        assertEquals(LocalDate(2025, 1, 10), r.date) // geçen cuma
+        assertEquals(Category.MARKET, r.category)
+        assertTrue("cuma" !in r.tokens)
+    }
+
+    @Test
+    fun weekday_today_andGecenSkipsToday() {
+        assertEquals(today, parser.parse("çarşamba 50 taksi", today).date)
+        assertEquals(LocalDate(2025, 1, 8), parser.parse("geçen çarşamba 50 taksi", today).date)
+        assertEquals(LocalDate(2025, 1, 14), parser.parse("salı 80 kahve", today).date)
+    }
+
+    @Test
+    fun pazar_aloneIsTheMarket_withGunuIsSunday() {
+        val bazaar = parser.parse("200 pazar", today)
+        assertEquals(today, bazaar.date)
+        assertTrue("pazar" in bazaar.tokens) // semt pazarı: kelime olarak kalır
+
+        val sunday = parser.parse("pazar günü 200 market", today)
+        assertEquals(LocalDate(2025, 1, 12), sunday.date)
+        assertTrue("pazar" !in sunday.tokens)
+    }
 }

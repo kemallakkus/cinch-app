@@ -304,4 +304,26 @@ class HomeViewModelTest {
         assertEquals(listOf(tl(50)), f.state.weekExpenses.map { it.grossAmount })
         assertEquals(tl(50), f.state.status!!.todaySpent)
     }
+
+    @Test
+    fun pickedDate_overridesTextDate_andResetsAfterSave() = testVm { f ->
+        type(f, "dün 120 taksi")
+        assertEquals(LocalDate(2025, 1, 12), f.state.entryDate)
+
+        f.vm.onEvent(HomeEvent.DatePicked(LocalDate(2025, 1, 9)))
+        runCurrent()
+        assertEquals(LocalDate(2025, 1, 9), f.state.entryDate)
+        save(f)
+
+        assertEquals(LocalDate(2025, 1, 9), f.expenses.all.value.single().date)
+        assertNull(f.state.dateOverride)
+    }
+
+    @Test
+    fun pickedDate_cannotBeInTheFuture() = testVm { f ->
+        type(f, "120 taksi")
+        f.vm.onEvent(HomeEvent.DatePicked(LocalDate(2025, 2, 1)))
+        runCurrent()
+        assertEquals(monday, f.state.entryDate)
+    }
 }

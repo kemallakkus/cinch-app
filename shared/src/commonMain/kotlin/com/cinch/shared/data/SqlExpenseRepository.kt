@@ -31,6 +31,15 @@ class SqlExpenseRepository(
                 .map { it.toDomain() }
         }
 
+    override fun observeAll(): Flow<List<Expense>> =
+        queries.allExpenses()
+            .asFlow()
+            .mapToList(ioDispatcher)
+            .map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun get(id: Long): Expense? =
+        withContext(ioDispatcher) { queries.expenseById(id).executeAsOneOrNull()?.toDomain() }
+
     override suspend fun forCard(cardId: Long): List<Expense> =
         withContext(ioDispatcher) {
             queries.expensesForCard(cardId).executeAsList().map { it.toDomain() }
@@ -75,6 +84,22 @@ class SqlExpenseRepository(
                 queries.lastInsertedRowId().executeAsOne()
             }
         }
+
+    override suspend fun update(expense: Expense) {
+        withContext(ioDispatcher) {
+            queries.updateExpense(
+                date_epoch_day = expense.date.toEpochDays(),
+                gross_minor = expense.grossAmount.minor,
+                chargeable_fraction = expense.chargeableFraction,
+                category = expense.category.name,
+                card_id = expense.cardId,
+                note = expense.note,
+                raw_text = expense.rawText,
+                tokens = encodeTokens(expense.tokens),
+                id = expense.id,
+            )
+        }
+    }
 
     override suspend fun delete(id: Long) {
         withContext(ioDispatcher) { queries.deleteExpense(id) }

@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.cinch.shared.budget.FixedPaymentState
 import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
+import com.cinch.shared.budget.ObserveSpendingBreakdown
+import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
@@ -56,6 +58,7 @@ class MonthViewModelTest {
             val clock = FakeClock(today)
             val vm = MonthViewModel(
                 ObserveMonthSummary(FakeBudgetRepository(), incomes, fixed, expenses),
+                ObserveSpendingBreakdown(FakeBudgetRepository(), expenses),
                 incomes,
                 FixedPayments(expenses),
                 clock,
@@ -135,5 +138,18 @@ class MonthViewModelTest {
         assertTrue(f.state.payAmountError)
         assertIs<MonthDialog.Pay>(f.state.dialog)
         assertTrue(f.expenses.all.value.isEmpty())
+    }
+
+    @Test
+    fun breakdown_followsThisMonthsExpenses_withoutFixedPayments() = testVm { f ->
+        assertTrue(f.state.breakdown!!.isEmpty)
+
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 5), grossAmount = tl(300), category = Category.YEMEK))
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 6), grossAmount = tl(15_000), category = Category.EV, fixedExpenseId = 9))
+        runCurrent()
+
+        val breakdown = f.state.breakdown!!
+        assertEquals(tl(300), breakdown.total)
+        assertEquals(listOf(Category.YEMEK), breakdown.slices.map { it.category })
     }
 }

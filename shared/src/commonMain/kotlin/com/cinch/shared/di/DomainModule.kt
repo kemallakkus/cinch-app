@@ -5,6 +5,7 @@ import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
+import com.cinch.shared.budget.ObserveSpendingBreakdown
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.CorrectionStore
 import com.cinch.shared.category.KeywordDictionary
@@ -82,6 +83,10 @@ class DomainModule {
         fixedExpenses: FixedExpenseRepository,
         expenses: ExpenseRepository,
     ): ObserveMonthSummary = ObserveMonthSummary(budgets, incomes, fixedExpenses, expenses)
+
+    @Factory
+    fun observeSpendingBreakdown(budgets: BudgetRepository, expenses: ExpenseRepository): ObserveSpendingBreakdown =
+        ObserveSpendingBreakdown(budgets, expenses)
 
     @Factory
     fun fixedPayments(expenses: ExpenseRepository): FixedPayments = FixedPayments(expenses)

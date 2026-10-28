@@ -12,6 +12,11 @@ interface ExpenseRepository {
 
     suspend fun between(from: LocalDate, to: LocalDate): List<Expense>
 
+    /** Tüm kayıtlar, eskiden yeniye (geçmişte arama için). */
+    fun observeAll(): Flow<List<Expense>>
+
+    suspend fun get(id: Long): Expense?
+
     suspend fun forCard(cardId: Long): List<Expense>
 
     /** Bir kartın aralıktaki harcamalarını izler (kart detayı, mutabakat). */
@@ -24,6 +29,9 @@ interface ExpenseRepository {
 
     /** Harcamayı ekler ve yeni kaydın id'sini döner. [Expense.id] yok sayılır. */
     suspend fun add(expense: Expense): Long
+
+    /** Kaydı [Expense.id] ile günceller. Para birimi ve [Expense.fixedExpenseId] değişmez. */
+    suspend fun update(expense: Expense)
 
     suspend fun delete(id: Long)
 }

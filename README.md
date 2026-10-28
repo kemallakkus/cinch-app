@@ -28,12 +28,13 @@ cinch-app/
 | Bileşen | Sorumluluk | Dosya |
 |---|---|---|
 | `Money` / `MoneyFormatter` | Kuruş bazlı tutar (float hatasız), TR/EN biçim | `money/` |
-| `QuickEntryParser` | "195 market", "dün 120 su ekmek", "625 ... yarısı geri geldi" → tutar/tarih/pay/kategori | `parser/` |
+| `QuickEntryParser` | "195 market", "dün 120 su ekmek", "cuma 300 market", "625 ... yarısı geri geldi" → tutar/tarih/pay/kategori. Gün adı en yakın geçmiş o günü verir ("geçen cuma" bugünü atlar); "pazar" yalnız "pazar günü" / "geçen pazar" ise tarihtir (yoksa semt pazarı) | `parser/` |
 | `Categorizer` + `KeywordDictionary` | Anahtar kelime sözlüğü + kullanıcı düzeltmelerinden öğrenme | `category/` |
 | `BudgetEngine` | Haftalık sınır, günlük kalan pay, ay toplamı; paylaşımda yalnız kullanıcı payı sayılır | `budget/` |
 | `PayoffSimulator` | Kart kapanışı (~%4.9/ay faiz+vergi), taksit, esnek ödeme (Eminevim) | `debt/` |
 | `Reconciler` | Elle girilen güncel borç ile kayıt farkını bulur ("103 ₺ yazmayı unutmuşsun") | `reconcile/` |
 | `CoachRules` | 7 günün yerel bildirimlerini üretir; sessiz saat + günde max 2 + cümle varyasyonu | `coach/` |
+| `SpendingBreakdowns` | "Nereye gitti?": ayın serbest harcamalarının kategori dağılımı, geçen ayla kıyas, en çok para giden kelimeler | `budget/SpendingBreakdown.kt` |
 
 ## Veri katmanı ve DI (`shared/.../`)
 
@@ -44,6 +45,7 @@ cinch-app/
 | `SqlCorrectionStore` | Kategori düzeltmelerini kalıcı tutar (ilk erişimde belleğe alınır) | `data/` |
 | `ObserveBudgetStatus` | Bütçe + harcamaları izler, `BudgetEngine` ile canlı `BudgetStatus` yayar | `budget/` |
 | `ObserveMonthSummary` | Bu ayın özeti: gelir − sabit giderler − serbest harcamalar; sabit giderlerin ödendi/bekliyor durumu; sonraki gelir günü | `budget/` |
+| `ObserveSpendingBreakdown` | Bir ayın `SpendingBreakdown`ını izler. İçinde bulunulan ay geçen ayın **aynı günleriyle** (1–20 Ekim ↔ 1–20 Eylül), biten ay geçen ayın tamamıyla kıyaslanır; sabit gider ödemeleri hariç | `budget/SpendingBreakdown.kt` |
 | `FixedPayments` / `WeeklyLimitSuggestion` | Sabit gideri "ödendi" işaretleme (bağlı harcama kaydı) ve gelirden haftalık sınır önerisi | `budget/FixedPayments.kt` |
 | `PlanCoachWeek` | Bütçe, son 30 gün, kart hesap kesim günleri ve en büyük gelirin gününden `CoachRules` planını üretir | `coach/` |
 | `DataModule` / `DomainModule` / `PlatformModule` | Koin modülleri (annotation, `@Configuration`) | `di/` |
@@ -71,6 +73,10 @@ ay hesabına ve hatırlatmalara girmez, "Biten borçlar"a geçer. Esnek borçta 
 tutarla, o yoksa son 3 ödemenin ortalamasıyla yapılır. Koç ödeme gününden bir gün önce (19:00) ve o gün
 akşam hâlâ işaretlenmemişse (20:30) hatırlatır.
 
+**Kategori uyarısı:** haftanın 5. günü (pazartesi başlayan haftada cuma) 17:30'da, bu hafta bir kategoriye geçen
+haftanın aynı günlerinden en az %30 ve haftalık sınırın en az %10'u kadar fazla gidildiyse koç söyler ("Bu hafta
+yemeğe geçen haftadan %40 fazla gitti"). Yalnız o gün ve o günün verisiyle üretilir, haftada en fazla bir kez.
+
 ## Ekranlar (`composeApp/.../`)
 
 Alt menüde dört sekme var: **Bugün**, **Bu ay**, **Kartlar**, **Ayarlar**. Her sekmenin kendi geri yığını var;
@@ -79,10 +85,13 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 | Ekran | Ne yapar | Dosyalar |
 |---|---|---|
 | Bütçe kurulumu | İlk açılışta (bütçe yoksa) alt menüsüz açılır; haftalık harcama sınırı ve hafta başlangıcı. Gelir ve sabit giderler girildiyse haftalık sınır önerir ("Bunu kullan"). Sonra Ayarlar'dan düzenlenir | `ui/budget/` |
-| Bugün | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (sola kaydır → sil, "Geri al") | `ui/home/` |
+| Bugün | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (dokun → düzenle, sola kaydır → sil, "Geri al"); "Tüm geçmiş" | `ui/home/` |
+| Harcama düzenleme | Tutar, açıklama, kategori, tarih (takvim), "senin payın" (tamamı / yarısı / hiç) ve kart; silme. Tutar değişip açıklamaya dokunulmadıysa açıklamadaki sayı da güncellenir ("195 market" → "200 market"). Kategori düzeltilirse kelime öğrenilir. Sabit gider ödemesinde yalnız tutar, tarih ve kart | `ui/history/ExpenseEdit*` |
+| Geçmiş | Ay ay liste (gün başlıkları ve gün toplamı), kategori süzgeci; arama kutusu doluysa tüm geçmişte açıklama, not, kategori ve kart adında arar (Türkçe harf farkı gözetmez) | `ui/history/History*` |
+| Nereye gitti? | "Bu ay"daki özet kartından açılır: halka grafik, geçen ayla kıyas, kategoriler (pay çubuğu, ↑/↓ değişim; dokun → o ayın o kategorideki kayıtları), en çok para giden kelimeler; ay ay gezilir | `ui/insights/` |
 | Bu ay | Gelir − sabit giderler − harcamalar = elinde kalan; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir; borçlarda ilerleme çubuğu, borca dokun → detay: ilerleme, bitiş tahmini, ödeme ekle/sil) ve gelirler, ekleme/düzenleme | `ui/month/` |
 | Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu | `ui/settings/` |
-| Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir | `ui/home/QuickEntryBar.kt` |
+| Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori/tarih önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir. Tarih "dün", "cuma" yazınca değişir; 📅 çipinden takvimle de seçilir | `ui/home/QuickEntryBar.kt` |
 | Kartlar | Kart listesi; ekleme/düzenleme (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
 | Kart detayı | Bu ekstreye girecek harcamalar; "bankayla karşılaştır" (eksik farkı tek dokunuşla ekleme); eski borcun aylık ödemeyle ne zaman biteceği ve toplam faizi | `ui/cards/CardDetail*` |
 
@@ -140,8 +149,7 @@ Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.1
 ## Sonraki adımlar
 
 - İlk açılışta ekranı tanıtan odaklı balonlar (coach mark); yuvarlak hatlı özel yazı tipi (ör. Nunito)
-- Harcama tarihini takvimden seçme; bildirim saatlerini (sessiz saatler) saat seçiciyle ayarlama
-- Kayıtlı harcamayı düzenleme (tutar/kategori/kart)
+- Bildirim saatlerini (sessiz saatler) saat seçiciyle ayarlama
 - Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - Opsiyonel cihaz içi OCR fiş okuma (ML Kit / Apple Vision)

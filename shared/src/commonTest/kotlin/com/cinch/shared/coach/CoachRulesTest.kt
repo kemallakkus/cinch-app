@@ -1,6 +1,7 @@
 package com.cinch.shared.coach
 
 import com.cinch.shared.budget.BudgetStatus
+import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -131,5 +132,47 @@ class CoachRulesTest {
     fun allWithinQuietHoursRespected_inFullPlan() {
         val plan = rules.planWeek(CoachInput(today = today, budget = status()), CoachConfig())
         assertTrue(plan.none { CoachConfig().quietHours.contains(it.time) })
+    }
+
+    @Test
+    fun categorySpike_onFifthDay_comparesSameDaysOfLastWeek() {
+        val friday = LocalDate(2025, 1, 17) // hafta pazartesi 13'ünde başladı
+        val expenses = listOf(
+            Expense(date = LocalDate(2025, 1, 14), grossAmount = t(300), category = Category.YEMEK),
+            Expense(date = LocalDate(2025, 1, 16), grossAmount = t(200), category = Category.YEMEK),
+            Expense(date = LocalDate(2025, 1, 7), grossAmount = t(300), category = Category.YEMEK),
+            // Geçen haftanın cumartesisi: bu haftanın aynı günlerine denk gelmez, kıyasa girmez.
+            Expense(date = LocalDate(2025, 1, 11), grossAmount = t(400), category = Category.YEMEK),
+            Expense(date = LocalDate(2025, 1, 15), grossAmount = t(100), category = Category.MARKET),
+            Expense(date = LocalDate(2025, 1, 8), grossAmount = t(100), category = Category.MARKET),
+        )
+
+        val plan = rules.planWeek(CoachInput(today = friday, budget = status(), expenses = expenses), CoachConfig())
+
+        val spike = plan.single { it.type == NotificationType.CATEGORY_SPIKE }
+        assertEquals(friday, spike.date)
+        assertEquals(LocalTime(17, 30), spike.time)
+        assertTrue("yemeğe" in spike.message, spike.message)
+        assertTrue("%67" in spike.message, spike.message) // 300 → 500
+    }
+
+    @Test
+    fun categorySpike_silentOnOtherDays_andForSmallDifferences() {
+        val thursday = LocalDate(2025, 1, 16)
+        val expenses = listOf(
+            Expense(date = LocalDate(2025, 1, 14), grossAmount = t(500), category = Category.YEMEK),
+            Expense(date = LocalDate(2025, 1, 7), grossAmount = t(300), category = Category.YEMEK),
+        )
+        val onThursday = rules.planWeek(CoachInput(today = thursday, budget = status(), expenses = expenses), CoachConfig())
+        assertFalse(onThursday.any { it.type == NotificationType.CATEGORY_SPIKE })
+
+        // %50 fazla ama fark 50 TL: haftalık sınırın (700) %10'una varmıyor.
+        val small = listOf(
+            Expense(date = LocalDate(2025, 1, 14), grossAmount = t(150), category = Category.YEMEK),
+            Expense(date = LocalDate(2025, 1, 7), grossAmount = t(100), category = Category.YEMEK),
+        )
+        val friday = LocalDate(2025, 1, 17)
+        val plan = rules.planWeek(CoachInput(today = friday, budget = status(), expenses = small), CoachConfig())
+        assertFalse(plan.any { it.type == NotificationType.CATEGORY_SPIKE })
     }
 }

@@ -1,6 +1,7 @@
 package com.cinch.shared.coach
 
 import com.cinch.shared.budget.BudgetStatus
+import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.AppLocale
 import com.cinch.shared.money.Money
@@ -11,6 +12,7 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.isoDayNumber
+import kotlin.math.roundToInt
 
 /** Koçluk bildirimi türü. */
 enum class NotificationType {
@@ -24,6 +26,7 @@ enum class NotificationType {
     SALARY,             // maaş günü
     FIXED_DUE,          // yarın sabit gider ödeme günü
     FIXED_UNPAID,       // bugün ödeme günü, henüz "ödendi" işaretlenmedi
+    CATEGORY_SPIKE,     // bu hafta bir kategoriye geçen haftadan belirgin fazla gitti
 }
 
 /** Planlanmış tek bildirim. */
@@ -89,6 +92,7 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(salary(input, config))
             addAll(fixedDue(input, config))
             addAll(fixedUnpaid(input, config))
+            addAll(categorySpike(input, config))
         }
         return applyConstraints(candidates, config)
     }
@@ -269,6 +273,47 @@ class CoachRules(private val horizonDays: Int = 7) {
             }
     }
 
+    /**
+     * Haftanın 5. günü (pazartesi başlayan haftada cuma) akşamı, hafta sonundan önce: bu hafta bir kategoriye
+     * geçen haftanın aynı günlerinden en az %30 ve haftalık sınırın en az %10'u kadar fazla gittiyse.
+     *
+     * Yalnız o gün ve o günün verisiyle üretilir; Android bildirimi gösterirken kuralı yeniden çalıştırır,
+     * o ana kadar fark kapandıysa bildirim düşer. Başka günlerde hiç üretilmez (haftada en fazla bir kez).
+     */
+    private fun categorySpike(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val weekStart = input.budget.weekStart
+        if (input.today != weekStart.plusDays(SPIKE_CHECK_OFFSET)) return emptyList()
+        val currency = input.budget.weeklyLimit.currency
+        val lastWeekStart = weekStart.minusDays(7)
+        val lastWeekToday = input.today.minusDays(7)
+
+        fun totals(from: LocalDate, to: LocalDate): Map<Category, Long> =
+            input.expenses.filter { it.date in from..to && it.grossAmount.currency == currency }
+                .groupBy { it.category }
+                .mapValues { (_, list) -> list.sumOf { it.chargeableAmount.minor } }
+
+        val now = totals(weekStart, input.today)
+        val before = totals(lastWeekStart, lastWeekToday)
+        val minDiff = input.budget.weeklyLimit.minor / 10
+        val spike = now.mapNotNull { (category, minor) ->
+            val previous = before[category] ?: return@mapNotNull null
+            val diff = minor - previous
+            if (previous <= 0 || diff < minDiff || minor * 10 < previous * 13) null else Triple(category, minor, previous)
+        }.maxByOrNull { (_, minor, previous) -> minor - previous } ?: return emptyList()
+
+        val (category, minor, previous) = spike
+        val percent = ((minor - previous) * 100.0 / previous).roundToInt()
+        val nowText = MoneyFormatter.format(Money(minor, currency), config.locale)
+        val beforeText = MoneyFormatter.format(Money(previous, currency), config.locale)
+        val msg = when (config.locale) {
+            AppLocale.TR -> "Bu hafta ${category.dativeTr} geçen haftadan %$percent fazla gitti: $nowText " +
+                "(geçen hafta bu zamana kadar $beforeText). Hafta sonu biraz dikkat 🙂"
+            AppLocale.EN -> "You've spent $percent% more on ${category.nameEn} this week than last week: $nowText " +
+                "(vs $beforeText by this time last week)."
+        }
+        return listOf(CoachNotification(input.today, LocalTime(17, 30), NotificationType.CATEGORY_SPIKE, 72, msg))
+    }
+
     // ───────────────────────── Kısıtlar ─────────────────────────
 
     internal fun applyConstraints(
@@ -306,4 +351,38 @@ class CoachRules(private val horizonDays: Int = 7) {
 
     private fun endOfWeekIso(weekStart: DayOfWeek): Int =
         ((weekStart.isoDayNumber - 1 + 6) % 7) + 1
+
+    private companion object {
+        /** Hafta başından kaç gün sonra kategori kıyası yapılır (4 = 5. gün). */
+        const val SPIKE_CHECK_OFFSET = 4
+    }
 }
+
+/** "yemeğe", "markete": "Bu hafta ___ geçen haftadan fazla gitti" cümlesi için. */
+private val Category.dativeTr: String
+    get() = when (this) {
+        Category.MARKET -> "markete"
+        Category.YEMEK -> "yemeğe"
+        Category.ULASIM -> "ulaşıma"
+        Category.FATURA -> "faturalara"
+        Category.SAGLIK -> "sağlığa"
+        Category.EGLENCE -> "eğlenceye"
+        Category.GIYIM -> "giyime"
+        Category.KISISEL -> "kişisel bakıma"
+        Category.EV -> "ev harcamalarına"
+        Category.DIGER -> "diğer harcamalara"
+    }
+
+private val Category.nameEn: String
+    get() = when (this) {
+        Category.MARKET -> "groceries"
+        Category.YEMEK -> "food"
+        Category.ULASIM -> "transport"
+        Category.FATURA -> "bills"
+        Category.SAGLIK -> "health"
+        Category.EGLENCE -> "fun"
+        Category.GIYIM -> "clothing"
+        Category.KISISEL -> "personal care"
+        Category.EV -> "home"
+        Category.DIGER -> "other things"
+    }

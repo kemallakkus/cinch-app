@@ -42,11 +42,12 @@ import androidx.compose.ui.unit.dp
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.parser.ParsedEntry
+import com.cinch.ui.common.DateChip
 import com.cinch.ui.common.display
 import com.cinch.ui.common.emoji
 import com.cinch.ui.common.label
-import com.cinch.ui.common.relativeLabel
 import com.cinch.ui.theme.colors
+import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 
 /** Ekranın altındaki kayıt alanı: klavye açılınca onunla birlikte yukarı çıkar. */
@@ -70,6 +71,7 @@ fun QuickEntryBar(state: HomeState, onEvent: (HomeEvent) -> Unit) {
                     state = state,
                     onPick = { onEvent(HomeEvent.CategoryPicked(it)) },
                     onPickCard = { onEvent(HomeEvent.CardPicked(it)) },
+                    onPickDate = { onEvent(HomeEvent.DatePicked(it)) },
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -105,6 +107,7 @@ private fun EntryPreview(
     state: HomeState,
     onPick: (Category) -> Unit,
     onPickCard: (Long?) -> Unit,
+    onPickDate: (LocalDate) -> Unit,
 ) {
     // Dar ekranda çipler alt satıra geçer.
     FlowRow(
@@ -122,9 +125,10 @@ private fun EntryPreview(
         if (state.cards.isNotEmpty()) {
             CardPicker(cards = state.cards, selectedId = state.entryCardId, onPick = onPickCard)
         }
+        // "dün", "cuma" yazınca kendiliğinden değişir; takvimden de seçilir.
+        DateChip(date = state.entryDate ?: parsed.date, today = state.today, onPick = onPickDate)
 
         val details = buildList {
-            if (parsed.date != state.today) add(parsed.date.relativeLabel(state.today))
             if (parsed.chargeableFraction < 1.0) add("payın %${(parsed.chargeableFraction * 100).roundToInt()}")
         }
         if (details.isNotEmpty()) {

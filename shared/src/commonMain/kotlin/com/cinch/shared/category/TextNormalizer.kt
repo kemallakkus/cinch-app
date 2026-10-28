@@ -8,11 +8,14 @@ object TextNormalizer {
         'ü' to 'u', 'Ü' to 'u', 'ö' to 'o', 'Ö' to 'o', 'ç' to 'c', 'Ç' to 'c',
     )
 
+    /**
+     * Harf harf: önce Türkçe indirgeme, sonra küçültme. `String.lowercase()` "İ"yi iki karaktere ("i" +
+     * birleşen nokta) çevirdiği için "MİGROS" "migros"la eşleşmezdi.
+     */
     fun normalize(input: String): String {
-        val lower = input.lowercase()
-        val sb = StringBuilder(lower.length)
-        for (ch in lower) {
-            sb.append(replacements[ch] ?: ch)
+        val sb = StringBuilder(input.length)
+        for (ch in input) {
+            sb.append(replacements[ch] ?: ch.lowercaseChar())
         }
         return sb.toString().trim()
     }

@@ -252,7 +252,8 @@ private fun PaidWithPicker(cards: List<Card>, selectedId: Long?, onPick: (Long?)
     var expanded by remember { mutableStateOf(false) }
     val selected = cards.firstOrNull { it.id == selectedId }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Nasıl ödüyorsun?", style = MaterialTheme.typography.titleSmall)
+        // Formun başındaki "Nasıl ödüyorsun?" ödeme şeklini soruyor; bu, ödeme aracı.
+        Text("Neyle ödüyorsun?", style = MaterialTheme.typography.titleSmall)
         Box {
             OutlinedButton(onClick = { expanded = true }) {
                 Text(if (selected == null) "💵 Nakit / havale ▾" else "💳 ${selected.name} ▾")

@@ -201,3 +201,20 @@ fun Category.colors(): CategoryColors {
     }
     return if (CinchTheme.colors.isDark) dark else light
 }
+
+/**
+ * Grafiklerde kategorinin canlı tonu: pastel kutucuk renkleri krem zeminde soluk kalır. Orta tonlar
+ * açık ve koyu temada aynı kullanılır.
+ */
+fun Category.chartColor(): Color = when (this) {
+    Category.MARKET -> Color(0xFF5BB46A)
+    Category.YEMEK -> Color(0xFFF08A3C)
+    Category.ULASIM -> Color(0xFF4A90E2)
+    Category.FATURA -> Color(0xFFE8B730)
+    Category.SAGLIK -> Color(0xFFE5576E)
+    Category.EGLENCE -> Color(0xFF9B6BDB)
+    Category.GIYIM -> Color(0xFFE063B5)
+    Category.KISISEL -> Color(0xFF2FB5A5)
+    Category.EV -> Color(0xFFB07A4F)
+    Category.DIGER -> Color(0xFF9E928C)
+}

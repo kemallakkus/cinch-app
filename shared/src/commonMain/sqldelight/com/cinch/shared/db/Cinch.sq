@@ -84,6 +84,20 @@ SELECT last_insert_rowid();
 expensesBetween:
 SELECT * FROM expense WHERE date_epoch_day BETWEEN :from AND :to ORDER BY date_epoch_day, id;
 
+-- Geçmişte arama tüm kayıtlarda yapılır (Türkçe harf eşleştirmesi SQL'de değil, uygulamada).
+allExpenses:
+SELECT * FROM expense ORDER BY date_epoch_day, id;
+
+expenseById:
+SELECT * FROM expense WHERE id = ?;
+
+-- Para birimi ve sabit gider bağı düzenlenmez.
+updateExpense:
+UPDATE expense
+SET date_epoch_day = ?, gross_minor = ?, chargeable_fraction = ?, category = ?, card_id = ?,
+    note = ?, raw_text = ?, tokens = ?
+WHERE id = ?;
+
 expensesForCard:
 SELECT * FROM expense WHERE card_id = ? ORDER BY date_epoch_day, id;
 

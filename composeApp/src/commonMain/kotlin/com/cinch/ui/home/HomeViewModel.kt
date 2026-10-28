@@ -99,7 +99,7 @@ class HomeViewModel(
                 .collect { parsed ->
                     _state.update {
                         // Alan boşalınca elle yapılan seçimler de sıfırlanır.
-                        if (parsed == null) it.copy(parsed = null, categoryOverride = null, cardOverride = null)
+                        if (parsed == null) it.copy(parsed = null, categoryOverride = null, cardOverride = null, dateOverride = null)
                         else it.copy(parsed = parsed)
                     }
                 }
@@ -111,6 +111,8 @@ class HomeViewModel(
             HomeEvent.Resumed -> today.value = clock.today()
             is HomeEvent.CategoryPicked -> _state.update { it.copy(categoryOverride = event.category) }
             is HomeEvent.CardPicked -> _state.update { it.copy(cardOverride = CardSelection(event.cardId)) }
+            // Harcama gelecekte olamaz.
+            is HomeEvent.DatePicked -> _state.update { it.copy(dateOverride = minOf(event.date, today.value)) }
             HomeEvent.SaveEntry -> saveEntry()
             is HomeEvent.DeleteExpense -> delete(event.expense)
             is HomeEvent.UndoDelete -> viewModelScope.launch { expenses.add(event.expense.copy(id = 0)) }
@@ -135,13 +137,13 @@ class HomeViewModel(
                     // Düzeltme diske yazılır: aynı kelimeler bir dahaki sefere doğru tahmin edilir.
                     withContext(ioDispatcher) { categorizer.learnFromCorrection(parsed.tokens, category) }
                 }
-                val saved = expense.copy(category = category)
+                val saved = expense.copy(category = category, date = current.dateOverride ?: expense.date)
                 // Kayıttan önce bakılır: sonra bakılsa durum çoktan güncellenmiş olabilir, harcama iki kez düşülürdü.
                 val onTrack = staysOnTrack(saved)
                 expenses.add(saved)
                 _effect.send(HomeEffect.EntrySaved(onTrack))
                 current.entry.clearText()
-                _state.update { it.copy(categoryOverride = null, cardOverride = null) }
+                _state.update { it.copy(categoryOverride = null, cardOverride = null, dateOverride = null) }
             } finally {
                 _state.update { it.copy(isSaving = false) }
             }

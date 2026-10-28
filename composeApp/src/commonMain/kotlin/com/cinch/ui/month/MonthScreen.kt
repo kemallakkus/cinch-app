@@ -53,19 +53,26 @@ import com.cinch.shared.budget.DebtProgress
 import com.cinch.shared.budget.FixedPaymentState
 import com.cinch.shared.budget.FixedStatus
 import com.cinch.shared.budget.MonthSummary
+import com.cinch.shared.budget.SpendingBreakdown
 import com.cinch.shared.budget.Payday
 import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
 import com.cinch.ui.common.AnimatedMoneyText
 import com.cinch.ui.common.ConfettiBurst
+import com.cinch.ui.common.DonutChart
 import com.cinch.ui.common.HeroCard
 import com.cinch.ui.common.InfoTip
 import com.cinch.ui.common.dayOfMonthLabel
 import com.cinch.ui.common.display
 import com.cinch.ui.common.emoji
+import com.cinch.ui.common.label
 import com.cinch.ui.common.monthYearLabel
 import com.cinch.ui.common.shortLabel
 import com.cinch.ui.theme.CinchTheme
+import com.cinch.ui.insights.changeColor
+import com.cinch.ui.insights.comparisonSentence
+import com.cinch.ui.insights.donutSlices
+import com.cinch.ui.theme.chartColor
 import com.cinch.ui.theme.colors
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
@@ -80,6 +87,7 @@ fun MonthScreen(
     onAddFixed: () -> Unit,
     onOpenFixed: (Long) -> Unit,
     onOpenDebt: (Long) -> Unit,
+    onOpenInsights: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     confettiTrigger: Int = 0,
 ) {
@@ -103,6 +111,10 @@ fun MonthScreen(
             ) {
                 item(key = "summary") {
                     if (summary == null || !summary.hasIncome) EmptySummary(onAddIncome) else SummaryCard(summary)
+                }
+
+                state.breakdown?.takeIf { !it.isEmpty }?.let { breakdown ->
+                    item(key = "breakdown") { BreakdownTeaser(breakdown, onClick = onOpenInsights) }
                 }
 
                 item(key = "fixedHeader") {
@@ -468,6 +480,44 @@ private fun FinishedRow(status: FixedStatus, onOpen: () -> Unit) {
         Text(status.fixed.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         status.progress?.let {
             Text("Toplam ${it.paidTotal.display()}", style = MaterialTheme.typography.bodySmall, color = CinchTheme.colors.good)
+        }
+    }
+}
+
+/** "Nereye gitti?" özeti: küçük halka, en büyük üç kategori ve geçen ayla kıyas; dokununca ayrıntı açılır. */
+@Composable
+private fun BreakdownTeaser(breakdown: SpendingBreakdown, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        DonutChart(slices = breakdown.donutSlices(), modifier = Modifier.size(88.dp), thickness = 14.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Nereye gitti?", style = MaterialTheme.typography.titleMedium)
+            breakdown.slices.take(3).forEach { spend ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(spend.category.chartColor()))
+                    Text(
+                        spend.category.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(spend.amount.display(), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            Text(
+                breakdown.comparisonSentence(),
+                style = MaterialTheme.typography.bodySmall,
+                color = changeColor(breakdown.change),
+            )
         }
     }
 }

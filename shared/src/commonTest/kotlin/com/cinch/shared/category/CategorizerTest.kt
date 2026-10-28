@@ -64,4 +64,11 @@ class CategorizerTest {
         assertEquals(null, store.categoryFor("market"))
         assertEquals(Category.EV, store.categoryFor("qnbpay"))
     }
+
+    @Test
+    fun normalize_capitalDottedI_isPlainI() {
+        // String.lowercase() "İ"yi "i" + birleşen noktaya çevirir; aramada eşleşmesin diye harf harf indirgenir.
+        assertEquals("migros", TextNormalizer.normalize("MİGROS"))
+        assertEquals("igdir sogan", TextNormalizer.normalize("Iğdır SOĞAN"))
+    }
 }

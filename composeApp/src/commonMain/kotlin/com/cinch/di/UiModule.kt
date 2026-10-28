@@ -4,13 +4,17 @@ import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.navigation.CardEditRoute
 import com.cinch.navigation.DebtDetailRoute
+import com.cinch.navigation.ExpenseEditRoute
 import com.cinch.navigation.FixedEditRoute
+import com.cinch.navigation.HistoryRoute
 import com.cinch.navigation.IncomeEditRoute
+import com.cinch.navigation.InsightsRoute
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.ObserveMonthSummary
+import com.cinch.shared.budget.ObserveSpendingBreakdown
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.repository.BudgetRepository
@@ -25,7 +29,10 @@ import com.cinch.ui.budget.BudgetSetupViewModel
 import com.cinch.ui.cards.CardDetailViewModel
 import com.cinch.ui.cards.CardEditViewModel
 import com.cinch.ui.cards.CardsViewModel
+import com.cinch.ui.history.ExpenseEditViewModel
+import com.cinch.ui.history.HistoryViewModel
 import com.cinch.ui.home.HomeViewModel
+import com.cinch.ui.insights.InsightsViewModel
 import com.cinch.ui.month.DebtDetailViewModel
 import com.cinch.ui.month.FixedEditViewModel
 import com.cinch.ui.month.IncomeEditViewModel
@@ -97,10 +104,11 @@ class UiModule {
     @KoinViewModel
     fun monthViewModel(
         observeMonthSummary: ObserveMonthSummary,
+        observeSpendingBreakdown: ObserveSpendingBreakdown,
         incomes: IncomeRepository,
         fixedPayments: FixedPayments,
         clock: LocalClock,
-    ): MonthViewModel = MonthViewModel(observeMonthSummary, incomes, fixedPayments, clock)
+    ): MonthViewModel = MonthViewModel(observeMonthSummary, observeSpendingBreakdown, incomes, fixedPayments, clock)
 
     @KoinViewModel
     fun fixedEditViewModel(
@@ -125,4 +133,40 @@ class UiModule {
         fixedPayments: FixedPayments,
         clock: LocalClock,
     ): DebtDetailViewModel = DebtDetailViewModel(route, fixedExpenses, expenses, fixedPayments, clock)
+
+    @KoinViewModel
+    fun expenseEditViewModel(
+        @InjectedParam route: ExpenseEditRoute,
+        expenses: ExpenseRepository,
+        cards: CardRepository,
+        fixedExpenses: FixedExpenseRepository,
+        parser: QuickEntryParser,
+        categorizer: Categorizer,
+        clock: LocalClock,
+        @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
+    ): ExpenseEditViewModel = ExpenseEditViewModel(
+        route = route,
+        expenses = expenses,
+        cards = cards,
+        fixedExpenses = fixedExpenses,
+        parser = parser,
+        categorizer = categorizer,
+        clock = clock,
+        ioDispatcher = ioDispatcher,
+    )
+
+    @KoinViewModel
+    fun historyViewModel(
+        @InjectedParam route: HistoryRoute,
+        expenses: ExpenseRepository,
+        cards: CardRepository,
+        clock: LocalClock,
+    ): HistoryViewModel = HistoryViewModel(route, expenses, cards, clock)
+
+    @KoinViewModel
+    fun insightsViewModel(
+        @InjectedParam route: InsightsRoute,
+        observeSpendingBreakdown: ObserveSpendingBreakdown,
+        clock: LocalClock,
+    ): InsightsViewModel = InsightsViewModel(route, observeSpendingBreakdown, clock)
 }

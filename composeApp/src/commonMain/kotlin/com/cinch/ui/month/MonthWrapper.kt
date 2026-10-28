@@ -19,6 +19,7 @@ fun MonthWrapper(
     onAddFixed: () -> Unit,
     onOpenFixed: (Long) -> Unit,
     onOpenDebt: (Long) -> Unit,
+    onOpenInsights: () -> Unit,
     viewModel: MonthViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -48,6 +49,7 @@ fun MonthWrapper(
         onAddFixed = onAddFixed,
         onOpenFixed = onOpenFixed,
         onOpenDebt = onOpenDebt,
+        onOpenInsights = onOpenInsights,
         snackbarHostState = snackbarHostState,
         confettiTrigger = confetti,
     )

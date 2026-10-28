@@ -36,4 +36,5 @@ val NotificationType.title: String
         NotificationType.SALARY -> "Maaş günü"
         NotificationType.FIXED_DUE -> "Yarın ödeme günü"
         NotificationType.FIXED_UNPAID -> "Ödendi mi?"
+        NotificationType.CATEGORY_SPIKE -> "Bu hafta nereye gitti?"
     }

@@ -19,6 +19,7 @@ import kotlinx.datetime.LocalDate
  * @param categoryOverride kullanıcının önizlemede seçtiği kategori; kaydederken tahmini ezer.
  * @param cards kullanıcının kartları (önizlemedeki kart seçimi ve listede kart adı için).
  * @param cardOverride önizlemede elle seçilen kart (ya da nakit); kaydederken metinden bulunanı ezer.
+ * @param dateOverride önizlemede takvimden seçilen gün; metindeki "dün", "cuma" gibi tarihi ezer.
  */
 @Immutable
 data class HomeState(
@@ -31,9 +32,13 @@ data class HomeState(
     val categoryOverride: Category? = null,
     val cards: List<Card> = emptyList(),
     val cardOverride: CardSelection? = null,
+    val dateOverride: LocalDate? = null,
     val isSaving: Boolean = false,
 ) {
     val entryCategory: Category? get() = categoryOverride ?: parsed?.category
+
+    /** Kaydedilecek gün: takvimden seçilen, yoksa metinden okunan (varsayılan bugün). */
+    val entryDate: LocalDate? get() = dateOverride ?: parsed?.date
 
     /** Kaydedilecek kart: elle seçilen, yoksa metinde adı geçen; null = nakit. */
     val entryCardId: Long? get() = if (cardOverride != null) cardOverride.cardId else parsed?.cardId
@@ -81,6 +86,7 @@ sealed interface HomeEvent {
     data object Resumed : HomeEvent
     data class CategoryPicked(val category: Category) : HomeEvent
     data class CardPicked(val cardId: Long?) : HomeEvent
+    data class DatePicked(val date: LocalDate) : HomeEvent
     data object SaveEntry : HomeEvent
     data class DeleteExpense(val expense: Expense) : HomeEvent
     data class UndoDelete(val expense: Expense) : HomeEvent

@@ -26,11 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -39,22 +37,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.cinch.shared.budget.BudgetStatus
-import com.cinch.shared.domain.Expense
 import com.cinch.ui.common.AnimatedMoneyText
-import com.cinch.ui.common.CategoryBadge
 import com.cinch.ui.common.ConfettiBurst
+import com.cinch.ui.common.ExpenseRow
 import com.cinch.ui.common.HeroCard
 import com.cinch.ui.common.InfoTip
 import com.cinch.ui.common.display
 import com.cinch.ui.common.initial
-import com.cinch.ui.common.label
 import com.cinch.ui.common.longDayLabel
-import com.cinch.ui.common.relativeLabel
 import com.cinch.ui.theme.CinchTheme
-import kotlinx.datetime.LocalDate
 
 /**
  * @param confettiTrigger her arttığında ekranda küçük bir konfeti patlar (kayıt payın içinde kaldıysa).
@@ -66,6 +59,8 @@ fun HomeScreen(
     onEvent: (HomeEvent) -> Unit,
     snackbarHostState: SnackbarHostState,
     confettiTrigger: Int = 0,
+    onOpenExpense: (Long) -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     prompt: @Composable () -> Unit = {},
 ) {
     val cardNames = remember(state.cards) { state.cards.associate { it.id to it.name } }
@@ -109,11 +104,18 @@ fun HomeScreen(
                 }
 
                 item(key = "header") {
-                    Text(
-                        if (state.weekExpenses.isEmpty()) "Bu hafta" else "Bu hafta · ${state.weekExpenses.size} harcama",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 2.dp, start = 4.dp),
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, start = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            if (state.weekExpenses.isEmpty()) "Bu hafta" else "Bu hafta · ${state.weekExpenses.size} harcama",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Geçmiş haftalar, arama ve sabit gider ödemeleri tüm geçmişte.
+                        TextButton(onClick = onOpenHistory) { Text("Tüm geçmiş") }
+                    }
                 }
 
                 if (state.weekExpenses.isEmpty()) {
@@ -125,6 +127,7 @@ fun HomeScreen(
                         expense = expense,
                         today = state.today,
                         cardName = expense.cardId?.let { cardNames[it] },
+                        onClick = { onOpenExpense(expense.id) },
                         onDelete = { onEvent(HomeEvent.DeleteExpense(expense)) },
                         modifier = Modifier.animateItem(),
                     )
@@ -274,70 +277,5 @@ private fun EmptyWeek() {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-@Composable
-private fun ExpenseRow(
-    expense: Expense,
-    today: LocalDate,
-    cardName: String?,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val dismissState = rememberSwipeToDismissBoxState()
-    val shape = MaterialTheme.shapes.medium
-    SwipeToDismissBox(
-        state = dismissState,
-        modifier = modifier,
-        enableDismissFromStartToEnd = false,
-        onDismiss = { if (it == SwipeToDismissBoxValue.EndToStart) onDelete() },
-        backgroundContent = {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .clip(shape)
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Text("🗑️ Sil", color = MaterialTheme.colorScheme.onErrorContainer)
-            }
-        },
-    ) {
-        val shared = expense.chargeableFraction < 1.0
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            CategoryBadge(expense.category)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    expense.rawText.ifBlank { expense.category.label },
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val parts = buildList {
-                    add(expense.category.label)
-                    add(expense.date.relativeLabel(today))
-                    cardName?.let { add("💳 $it") }
-                    if (shared) add("toplam ${expense.grossAmount.display()}")
-                }
-                Text(
-                    parts.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(expense.chargeableAmount.display(), style = MaterialTheme.typography.titleMedium)
-        }
     }
 }

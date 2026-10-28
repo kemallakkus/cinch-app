@@ -43,12 +43,16 @@ import com.cinch.ui.budget.BudgetSetupWrapper
 import com.cinch.ui.cards.CardDetailWrapper
 import com.cinch.ui.cards.CardEditWrapper
 import com.cinch.ui.cards.CardsWrapper
+import com.cinch.ui.history.ExpenseEditWrapper
+import com.cinch.ui.history.HistoryWrapper
 import com.cinch.ui.home.HomeWrapper
+import com.cinch.ui.insights.InsightsWrapper
 import com.cinch.ui.month.DebtDetailWrapper
 import com.cinch.ui.month.FixedEditWrapper
 import com.cinch.ui.month.IncomeEditWrapper
 import com.cinch.ui.month.MonthWrapper
 import com.cinch.ui.settings.SettingsWrapper
+import kotlinx.datetime.number
 
 /** Alt menünün sekmeleri; her biri kendi geri yığınının köküdür. */
 enum class TopTab(val label: String, val root: CinchRoute) {
@@ -181,7 +185,26 @@ private fun cinchEntries(
     goBack: () -> Unit,
     removeCardScreens: (Long) -> Unit,
 ): (CinchRoute) -> NavEntry<CinchRoute> = entryProvider {
-    entry<HomeRoute> { HomeWrapper() }
+    entry<HomeRoute> {
+        HomeWrapper(
+            onOpenExpense = { id -> navigate(ExpenseEditRoute(id)) },
+            onOpenHistory = { navigate(HistoryRoute()) },
+        )
+    }
+    entry<HistoryRoute> { route ->
+        HistoryWrapper(route = route, onOpenExpense = { id -> navigate(ExpenseEditRoute(id)) }, onBack = goBack)
+    }
+    entry<ExpenseEditRoute> { route -> ExpenseEditWrapper(route = route, onDone = goBack, onBack = goBack) }
+    entry<InsightsRoute> { route ->
+        InsightsWrapper(
+            route = route,
+            // Kategoriye dokununca o ayın o kategorideki kayıtları açılır.
+            onOpenCategory = { category, month ->
+                navigate(HistoryRoute(categoryName = category.name, year = month.year, month = month.month.number))
+            },
+            onBack = goBack,
+        )
+    }
     entry<MonthRoute> {
         MonthWrapper(
             onAddIncome = { navigate(IncomeEditRoute()) },
@@ -189,6 +212,7 @@ private fun cinchEntries(
             onAddFixed = { navigate(FixedEditRoute()) },
             onOpenFixed = { id -> navigate(FixedEditRoute(id)) },
             onOpenDebt = { id -> navigate(DebtDetailRoute(id)) },
+            onOpenInsights = { navigate(InsightsRoute()) },
         )
     }
     entry<DebtDetailRoute> { route ->

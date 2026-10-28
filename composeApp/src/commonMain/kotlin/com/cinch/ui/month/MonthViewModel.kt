@@ -12,6 +12,8 @@ import com.cinch.shared.budget.FixedPayments
 import com.cinch.shared.budget.FixedStatus
 import com.cinch.shared.budget.MonthSummary
 import com.cinch.shared.budget.ObserveMonthSummary
+import com.cinch.shared.budget.ObserveSpendingBreakdown
+import com.cinch.shared.budget.SpendingBreakdown
 import com.cinch.shared.domain.FixedPlan
 import com.cinch.shared.domain.Income
 import com.cinch.shared.domain.repository.IncomeRepository
@@ -47,6 +49,8 @@ data class MonthState(
     val today: LocalDate,
     val summary: MonthSummary? = null,
     val incomes: List<Income> = emptyList(),
+    /** "Nereye gitti?" özet kartı: bu ayın serbest harcamalarının kategori dağılımı. */
+    val breakdown: SpendingBreakdown? = null,
     val dialog: MonthDialog? = null,
     val payAmount: TextFieldState = TextFieldState(),
     val payAmountError: Boolean = false,
@@ -72,6 +76,7 @@ sealed interface MonthEffect {
 @OptIn(ExperimentalCoroutinesApi::class) // flatMapLatest
 class MonthViewModel(
     observeMonthSummary: ObserveMonthSummary,
+    observeSpendingBreakdown: ObserveSpendingBreakdown,
     incomes: IncomeRepository,
     private val fixedPayments: FixedPayments,
     private val clock: LocalClock,
@@ -87,13 +92,15 @@ class MonthViewModel(
         today,
         today.flatMapLatest { observeMonthSummary(it) },
         incomes.observeAll(),
+        today.flatMapLatest { observeSpendingBreakdown(it, it) },
         ui,
-    ) { day, summary, list, ui ->
+    ) { day, summary, list, breakdown, ui ->
         MonthState(
             isLoading = false,
             today = day,
             summary = summary,
             incomes = list,
+            breakdown = breakdown,
             dialog = ui.dialog,
             payAmount = payAmount,
             payAmountError = ui.payAmountError,

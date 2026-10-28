@@ -9,6 +9,7 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -107,5 +108,41 @@ class SqlExpenseRepositoryTest {
 
         // Aralık dışı kayıt da sorguyu tetikler; liste aynı kalır (1).
         assertEquals(listOf(0, 1, 1, 0), sizes)
+    }
+
+    @Test
+    fun update_changesEditableFields_keepsCurrencyAndFixedLink() = runTest {
+        val repo = repo()
+        val id = repo.add(
+            Expense(date = day, grossAmount = tl(195), category = Category.DIGER, rawText = "195 market", fixedExpenseId = 3),
+        )
+        val edited = Expense(
+            id = id,
+            date = LocalDate(2025, 1, 10),
+            grossAmount = tl(200),
+            chargeableFraction = 0.5,
+            category = Category.MARKET,
+            cardId = null,
+            note = "not",
+            tokens = listOf("market"),
+            rawText = "200 market",
+            fixedExpenseId = null, // bağ düzenlenmez
+        )
+
+        repo.update(edited)
+
+        assertEquals(edited.copy(fixedExpenseId = 3), repo.get(id))
+        assertEquals(null, repo.get(id + 100))
+    }
+
+    @Test
+    fun observeAll_returnsEveryExpenseOldestFirst() = runTest {
+        val repo = repo()
+        repo.add(Expense(date = LocalDate(2025, 3, 1), grossAmount = tl(10)))
+        repo.add(Expense(date = LocalDate(2024, 12, 31), grossAmount = tl(20)))
+
+        val all = repo.observeAll().first()
+
+        assertEquals(listOf(LocalDate(2024, 12, 31), LocalDate(2025, 3, 1)), all.map { it.date })
     }
 }

@@ -45,3 +45,20 @@ data class FixedEditRoute(val fixedId: Long? = null) : CinchRoute
 /** Taksitli ya da esnek borcun ilerlemesi ve ödeme geçmişi. */
 @Serializable
 data class DebtDetailRoute(val fixedId: Long) : CinchRoute
+
+/** Kaydedilmiş tek bir harcamanın düzenlenmesi. */
+@Serializable
+data class ExpenseEditRoute(val expenseId: Long) : CinchRoute
+
+/**
+ * Harcama geçmişi: ay ay liste, arama ve kategori süzgeci.
+ *
+ * @param categoryName yalnız bu kategori ([com.cinch.shared.domain.Category.name]); null = hepsi.
+ * @param year ve [month] açılacak ay (month 1–12); null = bu ay.
+ */
+@Serializable
+data class HistoryRoute(val categoryName: String? = null, val year: Int? = null, val month: Int? = null) : CinchRoute
+
+/** "Nereye gitti?": ayın kategori dağılımı ve geçen ayla kıyas. [year]/[month] null = bu ay. */
+@Serializable
+data class InsightsRoute(val year: Int? = null, val month: Int? = null) : CinchRoute

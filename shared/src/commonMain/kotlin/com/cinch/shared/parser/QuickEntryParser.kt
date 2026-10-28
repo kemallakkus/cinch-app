@@ -9,7 +9,9 @@ import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyInput
 import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
@@ -71,13 +73,14 @@ class QuickEntryParser(
         val normalized = tokens.map { TextNormalizer.normalize(it) }
 
         val amount = extractAmount(tokens)?.let { Money.ofDouble(it, currency) }
-        val date = extractDate(normalized, today)
+        val dateMatch = extractDate(normalized, today)
+        val date = dateMatch.date
         val fraction = extractChargeableFraction(normalized)
 
         // Kategorilendirme: sayısal ve tarih/pay anahtar kelimeleri hariç kelimeler.
-        val candidates = tokens.filter { tok ->
+        val candidates = tokens.filterIndexed { i, tok ->
             val n = TextNormalizer.normalize(tok)
-            !tok.any { it.isDigit() } && n !in DATE_WORDS && n !in FRACTION_STOPWORDS
+            !tok.any { it.isDigit() } && n !in DATE_WORDS && n !in FRACTION_STOPWORDS && i !in dateMatch.wordIndices
         }
         // Kart adı kategori değildir: "qnb" ne sınıflandırmaya ne öğrenmeye ne alışkanlık sayımına girer.
         val card = CardMatcher.match(candidates.map { TextNormalizer.normalize(it) }, cards)
@@ -110,19 +113,38 @@ class QuickEntryParser(
 
     // ───────────────────────── Tarih ─────────────────────────
 
-    private fun extractDate(normalized: List<String>, today: LocalDate): LocalDate {
+    /** @param wordIndices tarih olarak okunan kelimeler; kategori ve alışkanlık sayımına girmez. */
+    private data class DateMatch(val date: LocalDate, val wordIndices: Set<Int> = emptySet())
+
+    /**
+     * "bugün", "dün", "önceki gün" ve gün adları. Gün adı en yakın geçmiş o günü verir ("cuma" bugün
+     * cumaysa bugün); "geçen cuma" bugünü atlar. "pazar" semt pazarı da olabildiği için yalnız
+     * "pazar günü" ya da "geçen pazar" tarih sayılır.
+     */
+    private fun extractDate(normalized: List<String>, today: LocalDate): DateMatch {
         for ((i, word) in normalized.withIndex()) {
             when (word) {
-                "bugun" -> return today
-                "dun" -> return today.minusDays(1)
+                "bugun" -> return DateMatch(today, setOf(i))
+                "dun" -> return DateMatch(today.minusDays(1), setOf(i))
                 "onceki", "evvelsi", "evvelki" -> {
                     // "önceki gün" / "evvelsi gün"
                     val next = normalized.getOrNull(i + 1)
-                    if (next == "gun" || word == "evvelsi") return today.minusDays(2)
+                    if (next == "gun" || word == "evvelsi") return DateMatch(today.minusDays(2), setOf(i))
                 }
             }
+            val weekday = WEEKDAYS[word] ?: continue
+            val previous = normalized.getOrNull(i - 1) == "gecen"
+            val next = normalized.getOrNull(i + 1)
+            if (word == "pazar" && !previous && next != "gunu" && next != "gun") continue
+            return DateMatch(lastWeekday(today, weekday, skipToday = previous), setOf(i))
         }
-        return today
+        return DateMatch(today)
+    }
+
+    private fun lastWeekday(today: LocalDate, day: DayOfWeek, skipToday: Boolean): LocalDate {
+        var back = (today.dayOfWeek.isoDayNumber - day.isoDayNumber + 7) % 7
+        if (back == 0 && skipToday) back = 7
+        return today.minusDays(back)
     }
 
     // ──────────────────── Pay / İade oranı ────────────────────
@@ -157,7 +179,18 @@ class QuickEntryParser(
     }
 
     companion object {
-        private val DATE_WORDS = setOf("bugun", "dun", "onceki", "evvelsi", "evvelki", "gun")
+        private val DATE_WORDS = setOf("bugun", "dun", "onceki", "evvelsi", "evvelki", "gun", "gunu", "gecen")
+
+        /** "pazar" burada da var ama kategori kelimesi olarak elenmez; tarih olarak okunursa [DateMatch] eler. */
+        private val WEEKDAYS = mapOf(
+            "pazartesi" to DayOfWeek.MONDAY,
+            "sali" to DayOfWeek.TUESDAY,
+            "carsamba" to DayOfWeek.WEDNESDAY,
+            "persembe" to DayOfWeek.THURSDAY,
+            "cuma" to DayOfWeek.FRIDAY,
+            "cumartesi" to DayOfWeek.SATURDAY,
+            "pazar" to DayOfWeek.SUNDAY,
+        )
         private val FRACTION_STOPWORDS = setOf(
             "geri", "geldi", "gelecek", "gelir", "iade", "yarisi", "yarim", "ucte", "biri",
             "ceyregi", "tamami", "hepsi", "yari", "yariya", "bolustuk", "paylastik", "ortak",
