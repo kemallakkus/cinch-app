@@ -41,6 +41,7 @@ import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.navigation3.ui.NavDisplay
 import com.cinch.ui.budget.BudgetSetupWrapper
 import com.cinch.ui.cards.CardDetailWrapper
+import com.cinch.ui.cashflow.CashCalendarWrapper
 import com.cinch.ui.cards.CardEditWrapper
 import com.cinch.ui.cards.CardsWrapper
 import com.cinch.ui.history.ExpenseEditWrapper
@@ -218,6 +219,7 @@ private fun cinchEntries(
             onOpenDebt = { id -> navigate(DebtDetailRoute(id)) },
             onOpenInsights = { navigate(InsightsRoute()) },
             onReceiptRead = { text -> navigate(ReceiptReviewRoute(text)) },
+            onOpenCashCalendar = { navigate(CashCalendarRoute) },
         )
     }
     entry<DebtDetailRoute> { route ->
@@ -240,6 +242,7 @@ private fun cinchEntries(
             onStatementRead = { ocr -> navigate(StatementReviewRoute(cardId = route.cardId, ocr = ocr)) },
         )
     }
+    entry<CashCalendarRoute> { CashCalendarWrapper(onBack = goBack) }
     entry<StatementReviewRoute> { route ->
         StatementReviewWrapper(route = route, onDone = goBack, onBack = goBack)
     }

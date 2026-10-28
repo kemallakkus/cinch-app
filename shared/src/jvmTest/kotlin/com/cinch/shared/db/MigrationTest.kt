@@ -32,8 +32,8 @@ class MigrationTest {
     }
 
     @Test
-    fun schemaVersionIsFive() {
-        assertEquals(5L, CinchDatabase.Schema.version)
+    fun schemaVersionIsSix() {
+        assertEquals(6L, CinchDatabase.Schema.version)
     }
 
     @Test
@@ -121,7 +121,7 @@ class MigrationTest {
     }
 
     @Test
-    fun v4To5_cardsKeepTheirData_andStatementsTableExists() {
+    fun v4To6_cardsKeepTheirData_becomeCreditCards_andStatementsTableExists() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         driver.execute(
             null,
@@ -139,13 +139,15 @@ class MigrationTest {
         )
         driver.execute(null, "INSERT INTO card(name, carried_balance_minor, statement_day) VALUES ('QNB', 500000, 26)", 0)
 
-        CinchDatabase.Schema.migrate(driver, 4, 5)
+        // 4→5: son 4 hane ve ekstre tablosu; 5→6: kart türü.
+        CinchDatabase.Schema.migrate(driver, 4, 6)
 
         val queries = CinchDatabase(driver).cinchQueries
         val card = queries.allCards().executeAsList().single()
         assertEquals("QNB", card.name)
         assertEquals(26L, card.statement_day)
         assertEquals(null, card.last4)
+        assertEquals("CREDIT", card.type)
         assertTrue(queries.statementsForCard(card.id).executeAsList().isEmpty())
     }
 }

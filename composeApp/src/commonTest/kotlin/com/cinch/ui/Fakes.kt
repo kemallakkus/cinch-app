@@ -122,6 +122,9 @@ class FakeCardStatementRepository : CardStatementRepository {
     override suspend fun latestPerCard(): List<CardStatement> =
         all.value.sortedWith(compareByDescending<CardStatement> { it.readOn }.thenByDescending { it.id }).distinctBy { it.cardId }
 
+    override fun observeLatestPerCard(): Flow<List<CardStatement>> =
+        all.map { list -> list.sortedWith(compareByDescending<CardStatement> { it.readOn }.thenByDescending { it.id }).distinctBy { it.cardId } }
+
     override suspend fun add(statement: CardStatement): Long {
         val id = nextId++
         all.update { it + statement.copy(id = id) }

@@ -193,7 +193,8 @@ class StatementReviewViewModel(
         _state.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
-                statements.add(
+                // Banka kartında ekstre yok: yalnız hareketler (eksikler) işlenir.
+                if (card.isCredit) statements.add(
                     CardStatement(
                         cardId = card.id,
                         readOn = current.today,
@@ -213,7 +214,7 @@ class StatementReviewViewModel(
                 cards.update(
                     card.copy(
                         last4 = current.last4ToSave ?: card.last4,
-                        statementDay = card.statementDay ?: current.statementDate?.day,
+                        statementDay = if (card.isCredit) card.statementDay ?: current.statementDate?.day else null,
                     ),
                 )
                 val toAdd = current.transactions.filter { it.selected }

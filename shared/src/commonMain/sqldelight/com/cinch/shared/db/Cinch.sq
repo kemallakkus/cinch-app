@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS card (
     monthly_rate_percent REAL NOT NULL DEFAULT 4.9,
     statement_day INTEGER,
     -- Kart numarasının son 4 hanesi: banka ekranı fotoğrafındaki "•••• 1243" ile kart eşlenir.
-    last4 TEXT
+    last4 TEXT,
+    -- CREDIT (kredi kartı) ya da DEBIT (banka kartı: ekstre, borç, faiz yok).
+    type TEXT NOT NULL DEFAULT 'CREDIT'
 );
 
 CREATE TABLE IF NOT EXISTS expense (
@@ -136,8 +138,8 @@ DELETE FROM expense WHERE id = ?;
 
 -- ───────── card ─────────
 insertCard:
-INSERT INTO card(name, currency, carried_balance_minor, monthly_rate_percent, statement_day, last4)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO card(name, currency, carried_balance_minor, monthly_rate_percent, statement_day, last4, type)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 allCards:
 SELECT * FROM card ORDER BY id;
@@ -147,7 +149,7 @@ SELECT * FROM card WHERE id = ?;
 
 updateCard:
 UPDATE card
-SET name = ?, carried_balance_minor = ?, monthly_rate_percent = ?, statement_day = ?, last4 = ?
+SET name = ?, carried_balance_minor = ?, monthly_rate_percent = ?, statement_day = ?, last4 = ?, type = ?
 WHERE id = ?;
 
 deleteCard:
@@ -229,3 +231,54 @@ SELECT * FROM expense WHERE fixed_expense_id IS NOT NULL ORDER BY date_epoch_day
 
 deleteFixedExpense:
 DELETE FROM fixed_expense WHERE id = ?;
+
+-- ───────── yedek / geri yükleme ─────────
+-- Geri yüklemede her şey silinip yedekteki satırlar kimlikleriyle yazılır (harcama → kart, sabit gider bağları korunur).
+
+deleteAllExpenses:
+DELETE FROM expense;
+
+deleteAllCards:
+DELETE FROM card;
+
+deleteAllIncomes:
+DELETE FROM income;
+
+deleteAllFixedExpenses:
+DELETE FROM fixed_expense;
+
+deleteAllStatements:
+DELETE FROM card_statement;
+
+deleteAllCorrections:
+DELETE FROM category_correction;
+
+deleteBudget:
+DELETE FROM budget_config;
+
+restoreBudget:
+INSERT INTO budget_config(id, weekly_limit_minor, currency, week_start_iso, weekly_goal_minor, salary_day)
+VALUES (1, ?, ?, ?, ?, ?);
+
+restoreCard:
+INSERT INTO card(id, name, currency, carried_balance_minor, monthly_rate_percent, statement_day, last4, type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+restoreExpense:
+INSERT INTO expense(id, date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text, tokens, fixed_expense_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+restoreIncome:
+INSERT INTO income(id, name, amount_minor, currency, day_of_month) VALUES (?, ?, ?, ?, ?);
+
+restoreFixedExpense:
+INSERT INTO fixed_expense(id, name, amount_minor, currency, day_of_month, kind, card_id, plan, total_installments, paid_before, debt_minor)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+restoreStatement:
+INSERT INTO card_statement(
+    id, card_id, read_epoch_day, statement_epoch_day, due_epoch_day, next_statement_epoch_day, currency,
+    statement_balance_minor, minimum_payment_minor, period_spending_minor, future_installments_minor,
+    total_debt_minor, credit_limit_minor, available_limit_minor
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

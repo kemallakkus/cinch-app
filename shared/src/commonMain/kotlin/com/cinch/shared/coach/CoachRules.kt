@@ -11,6 +11,7 @@ import com.cinch.shared.parser.plusDays
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlin.math.roundToInt
 
@@ -28,6 +29,7 @@ enum class NotificationType {
     FIXED_UNPAID,       // bugün ödeme günü, henüz "ödendi" işaretlenmedi
     CATEGORY_SPIKE,     // bu hafta bir kategoriye geçen haftadan belirgin fazla gitti
     CARD_DUE,           // kredi kartı son ödeme günü yaklaşıyor (banka ekranından okunan)
+    BACKUP_REMINDER,    // uzun süredir yedek alınmadı
 }
 
 /**
@@ -81,6 +83,8 @@ data class CoachInput(
     val salaryDates: List<LocalDate> = emptyList(),
     val fixedDues: List<FixedDue> = emptyList(),
     val cardDues: List<CardDue> = emptyList(),
+    /** Son yedek günü; hiç alınmadıysa null. */
+    val lastBackup: LocalDate? = null,
 )
 
 /**
@@ -120,6 +124,7 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(fixedUnpaid(input, config))
             addAll(categorySpike(input, config))
             addAll(cardDue(input, config))
+            addAll(backupReminder(input, config))
         }
 
     private fun horizon(today: LocalDate): List<LocalDate> =
@@ -382,6 +387,31 @@ class CoachRules(private val horizonDays: Int = 7) {
             }
     }
 
+    /**
+     * Haftada bir (haftanın 2. günü 19:00): son yedek 30 günden eskiyse ya da hiç yedek yokken son 30 günde en az 20
+     * kayıt birikmişse. Öncelik düşük: o gün daha önemli bildirim varsa haftaya kalır.
+     */
+    private fun backupReminder(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val day = horizon(input.today).firstOrNull { input.budget.weekStart.daysUntil(it).mod(7) == BACKUP_DAY_OFFSET }
+            ?: return emptyList()
+        val last = input.lastBackup
+        val msg = if (last == null) {
+            if (input.expenses.size < BACKUP_MIN_RECORDS) return emptyList()
+            when (config.locale) {
+                AppLocale.TR -> "Verilerin yalnız bu telefonda. Ayarlar'dan tek dosyalık bir yedek al; telefon kaybolursa geri yüklersin."
+                AppLocale.EN -> "Your data lives only on this phone. Take a one-file backup in Settings."
+            }
+        } else {
+            val days = last.daysUntil(day)
+            if (days < BACKUP_STALE_DAYS) return emptyList()
+            when (config.locale) {
+                AppLocale.TR -> "Son yedeğin $days gün önce. Ayarlar'dan yenisini al, içi rahat etsin."
+                AppLocale.EN -> "Your last backup was $days days ago. Take a fresh one in Settings."
+            }
+        }
+        return listOf(CoachNotification(day, LocalTime(19, 0), NotificationType.BACKUP_REMINDER, 35, msg))
+    }
+
     // ───────────────────────── Kısıtlar ─────────────────────────
 
     internal fun applyConstraints(
@@ -429,6 +459,11 @@ class CoachRules(private val horizonDays: Int = 7) {
 
         /** Kart son ödemesi kaç gün önceden hatırlatılır. */
         const val CARD_DUE_EARLY_DAYS = 3
+
+        /** Yedek hatırlatmasının günü: hafta başından 1 gün sonra (2. gün). */
+        const val BACKUP_DAY_OFFSET = 1
+        const val BACKUP_STALE_DAYS = 30
+        const val BACKUP_MIN_RECORDS = 20
 
         val MONTHS_TR = listOf(
             "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",

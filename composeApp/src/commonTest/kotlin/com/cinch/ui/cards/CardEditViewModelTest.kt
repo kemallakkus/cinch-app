@@ -6,6 +6,7 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.lifecycle.viewModelScope
 import com.cinch.navigation.CardEditRoute
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardType
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.ui.FakeCardRepository
@@ -104,5 +105,32 @@ class CardEditViewModelTest {
 
         assertEquals(CardEditEffect.Deleted(1), vm.effect.first())
         assertTrue(repo.all.value.isEmpty())
+    }
+
+    @Test
+    fun debitCard_ignoresCreditFields() = testVm { vm, repo ->
+        vm.onEvent(CardEditEvent.TypePicked(CardType.DEBIT))
+        type(vm.state.value.name, "Akbank Kart")
+        type(vm.state.value.carriedBalance, "abc") // banka kartında sorulmuyor; geçersiz olsa da kaydı engellemez
+        vm.onEvent(CardEditEvent.StatementDayPicked(15))
+        vm.onEvent(CardEditEvent.Save)
+
+        assertEquals(CardEditEffect.Saved, vm.effect.first())
+        val saved = repo.all.value.single()
+        assertEquals(CardType.DEBIT, saved.type)
+        assertEquals(tl(0), saved.carriedBalance)
+        assertEquals(null, saved.statementDay)
+    }
+
+    @Test
+    fun editingKeepsLast4AndType() = testVm(
+        existing = Card(name = "Axess", carriedBalance = Money.of(0, Currency.TRY), last4 = "1243", type = CardType.CREDIT),
+    ) { vm, repo ->
+        type(vm.state.value.name, "Axess Platinum")
+        vm.onEvent(CardEditEvent.Save)
+
+        assertEquals(CardEditEffect.Saved, vm.effect.first())
+        assertEquals("1243", repo.all.value.single().last4)
+        assertEquals(CardType.CREDIT, repo.all.value.single().type)
     }
 }

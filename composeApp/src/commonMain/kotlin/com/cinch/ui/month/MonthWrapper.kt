@@ -23,6 +23,7 @@ fun MonthWrapper(
     onOpenDebt: (Long) -> Unit,
     onOpenInsights: () -> Unit,
     onReceiptRead: (String) -> Unit,
+    onOpenCashCalendar: () -> Unit,
     viewModel: MonthViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -55,6 +56,7 @@ fun MonthWrapper(
         onOpenDebt = onOpenDebt,
         onOpenInsights = onOpenInsights,
         onScanBill = if (receipt.isSupported) receipt::scan else null,
+        onOpenCashCalendar = onOpenCashCalendar,
         snackbarHostState = snackbarHostState,
         confettiTrigger = confetti,
     )

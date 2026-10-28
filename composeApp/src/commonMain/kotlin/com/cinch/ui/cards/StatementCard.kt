@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -32,6 +34,7 @@ import com.cinch.ui.common.display
 import com.cinch.ui.common.shortLabel
 import com.cinch.ui.statement.withYear
 import com.cinch.ui.theme.CinchTheme
+import kotlinx.datetime.LocalDate
 import kotlin.math.roundToLong
 
 /**
@@ -54,7 +57,9 @@ internal fun StatementCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (statement == null) {
+            if (!card.isCredit) {
+                DebitEmpty()
+            } else if (statement == null) {
                 Empty()
             } else {
                 Summary(card, statement, state)
@@ -67,6 +72,18 @@ internal fun StatementCard(
             }
         }
     }
+}
+
+/** Banka kartında ekstre yok; hareket ekranından eksik harcamalar bulunur. */
+@Composable
+private fun DebitEmpty() {
+    Text("📸 Hesap hareketlerinden oku", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "Banka uygulamasındaki kart ya da hesap hareketlerinin fotoğrafını seç; burada olmayan harcamaları bulup " +
+            "tek dokunuşla ekleyelim.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -146,11 +163,8 @@ private fun Summary(card: CreditCard, statement: CardStatement, state: CardDetai
     statement.futureInstallments?.takeIf { !it.isZero }?.let {
         Text("Gelecek dönemlere yansıyacak taksitler: ${it.display()}", style = MaterialTheme.typography.bodySmall)
     }
-    statement.periodSpending?.let { bank ->
-        // Okunduğu dönemle Cinch'teki dönem farklı olabilir: okunduğu gün yazılır.
-        val ours = state.periodTotal?.let { " · Cinch'te bu dönem ${it.display()}" }.orEmpty()
-        Text("Bankaya göre dönem içi harcama ${bank.display()}$ours", style = MaterialTheme.typography.bodySmall)
-    }
+    RecordedShare(statement, state)
+    if (state.statementHistory.size >= 2) StatementHistory(state.statementHistory)
     Spacer(Modifier.height(2.dp))
     Text(
         "${statement.readOn.shortLabel()} tarihinde okundu",
@@ -158,6 +172,80 @@ private fun Summary(card: CreditCard, statement: CardStatement, state: CardDetai
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+/** "Kart harcamalarının %92'sini girmişsin": bankanın dönem içi tutarı ile Cinch'teki kayıtlar. */
+@Composable
+private fun RecordedShare(statement: CardStatement, state: CardDetailState) {
+    val bank = statement.periodSpending ?: return
+    val share = state.recordedShare
+    if (share == null) {
+        Text("Bankaya göre dönem içi harcama ${bank.display()}", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    val percent = (share * 100).toInt()
+    val missing = state.periodTotal?.let { bank - it }?.takeIf { !it.isNegative && !it.isZero }
+    Text(
+        when {
+            percent >= 100 -> "Bu dönemki kart harcamalarının hepsini girmişsin 👏"
+            percent >= 90 -> "Kart harcamalarının %$percent'ini girmişsin 👏"
+            else -> "Kart harcamalarının %$percent'ini girmişsin; bankaya göre ${missing?.display() ?: ""} eksik. " +
+                "Hareketleri okutursan eksikleri bulalım."
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = if (percent >= 90) CinchTheme.colors.good else CinchTheme.colors.caution,
+    )
+}
+
+/** Son ekstrelerin küçük çubuk grafiği ve geçen aya göre değişim. */
+@Composable
+private fun StatementHistory(history: List<StatementPoint>) {
+    val max = history.maxOf { it.amount.minor }.coerceAtLeast(1)
+    val last = history.last().amount
+    val previous = history[history.size - 2].amount
+    Spacer(Modifier.height(6.dp))
+    Text("Son ekstreler", style = MaterialTheme.typography.titleSmall)
+    Row(
+        modifier = Modifier.fillMaxWidth().height(96.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        history.forEachIndexed { index, point ->
+            val fraction by animateFloatAsState((point.amount.minor.toFloat() / max).coerceIn(0.04f, 1f), label = "history")
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(fraction * 0.8f)
+                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                        .background(
+                            if (index == history.lastIndex) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ),
+                )
+                Text(point.dueDate.monthShort(), style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+    if (previous.currency == last.currency && !previous.isZero) {
+        val change = ((last.minor - previous.minor) * 100.0 / previous.minor).roundToLong()
+        Text(
+            when {
+                change > 0 -> "Bu ekstre öncekinden %$change fazla (${previous.display()} → ${last.display()})"
+                change < 0 -> "Bu ekstre öncekinden %${-change} az 👏 (${previous.display()} → ${last.display()})"
+                else -> "Bu ekstre öncekiyle aynı"
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = if (change > 0) CinchTheme.colors.caution else CinchTheme.colors.good,
+        )
+    }
+}
+
+/** Ekstrenin son ödeme ayı: "Eki". */
+private fun LocalDate.monthShort(): String = shortLabel().substringAfter(' ')
 
 /** Limit kullanımı; kullanılabilir limit eksiyse aşım. */
 @Composable

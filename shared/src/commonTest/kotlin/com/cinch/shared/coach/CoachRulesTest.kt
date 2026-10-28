@@ -209,4 +209,33 @@ class CoachRulesTest {
         assertTrue("asgari" in cardDue[0].message, cardDue[0].message)
         assertTrue(cardDue.none { "Axess" in it.message })
     }
+
+    /** Bugün bir kayıt var (kayıt unuttun hatırlatması olmasın), geri kalanı eskide (seri olmasın). */
+    private fun records(count: Int) =
+        listOf(Expense(date = today, grossAmount = t(10))) + (2 until count + 1).map { Expense(date = LocalDate(2025, 1, 1), grossAmount = t(10)) }
+
+    @Test
+    fun backupReminder_neverBackedUp_onlyAfterEnoughRecords() {
+        val few = rules.planWeek(CoachInput(today = today, budget = status(), expenses = records(5)), CoachConfig())
+        assertFalse(few.any { it.type == NotificationType.BACKUP_REMINDER })
+
+        val many = rules.planWeek(CoachInput(today = today, budget = status(), expenses = records(25)), CoachConfig())
+        val reminder = many.single { it.type == NotificationType.BACKUP_REMINDER }
+        assertEquals(LocalDate(2025, 1, 14), reminder.date) // haftanın 2. günü
+    }
+
+    @Test
+    fun backupReminder_whenLastBackupIsOld() {
+        val recent = rules.planWeek(
+            CoachInput(today = today, budget = status(), expenses = records(2), lastBackup = LocalDate(2025, 1, 4)),
+            CoachConfig(),
+        )
+        assertFalse(recent.any { it.type == NotificationType.BACKUP_REMINDER })
+
+        val old = rules.planWeek(
+            CoachInput(today = today, budget = status(), expenses = records(2), lastBackup = LocalDate(2024, 12, 1)),
+            CoachConfig(),
+        )
+        assertTrue("44 gün önce" in old.single { it.type == NotificationType.BACKUP_REMINDER }.message)
+    }
 }

@@ -75,6 +75,10 @@ data class ReceiptReviewRoute(val text: String) : CinchRoute
 @Serializable
 data class StatementReviewRoute(val cardId: Long? = null, val ocr: String) : CinchRoute
 
+/** Para takvimi: gün gün giriş-çıkış ve "maaşa kadar yeter mi?". */
+@Serializable
+data object CashCalendarRoute : CinchRoute
+
 /** "Nereye gitti?": ayın kategori dağılımı ve geçen ayla kıyas. [year]/[month] null = bu ay. */
 @Serializable
 data class InsightsRoute(val year: Int? = null, val month: Int? = null) : CinchRoute

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cinch.navigation.CardEditRoute
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardType
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -45,6 +46,7 @@ class CardEditViewModel(
 
     fun onEvent(event: CardEditEvent) {
         when (event) {
+            is CardEditEvent.TypePicked -> _state.update { it.copy(type = event.type, balanceError = false, rateError = false) }
             is CardEditEvent.StatementDayPicked -> _state.update { it.copy(statementDay = event.day) }
             CardEditEvent.Save -> save()
             CardEditEvent.DeleteRequested -> _state.update { it.copy(isConfirmingDelete = true) }
@@ -64,7 +66,7 @@ class CardEditViewModel(
             )
             s.monthlyRate.setTextAndPlaceCursorAtEnd(formatPercent(card.monthlyRatePercent))
         }
-        _state.update { it.copy(isLoading = false, statementDay = card?.statementDay) }
+        _state.update { it.copy(isLoading = false, statementDay = card?.statementDay, type = card?.type ?: it.type) }
     }
 
     private fun save() {
@@ -73,10 +75,12 @@ class CardEditViewModel(
         val currency = existing?.currency ?: Currency.TRY
 
         val name = current.name.text.toString().trim()
+        val debit = current.type == CardType.DEBIT
         val balanceText = current.carriedBalance.text.toString().trim()
-        // Boş borç sıfır demek: ekstresini her ay tam ödeyen kullanıcı için.
-        val balance = if (balanceText.isEmpty()) Money.zero(currency) else MoneyInput.parse(balanceText, currency)
-        val rate = parsePercent(current.monthlyRate.text.toString())
+        // Boş borç sıfır demek: ekstresini her ay tam ödeyen kullanıcı için. Banka kartında borç ve faiz yok.
+        val balance = if (debit || balanceText.isEmpty()) Money.zero(currency) else MoneyInput.parse(balanceText, currency)
+        val rate = if (debit) existing?.monthlyRatePercent ?: CardEditState.DEFAULT_MONTHLY_RATE
+        else parsePercent(current.monthlyRate.text.toString())
 
         val errors = current.copy(
             nameError = name.isEmpty(),
@@ -93,9 +97,10 @@ class CardEditViewModel(
             name = name,
             carriedBalance = balance!!,
             monthlyRatePercent = rate!!,
-            statementDay = current.statementDay,
+            statementDay = current.statementDay.takeIf { !debit },
             // Formda yok; banka ekranından okununca yazılır, düzenlemede kaybolmasın.
             last4 = existing?.last4,
+            type = current.type,
         )
         _state.update { it.copy(isSaving = true) }
         viewModelScope.launch {

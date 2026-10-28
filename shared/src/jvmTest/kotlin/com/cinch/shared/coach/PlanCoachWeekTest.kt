@@ -1,6 +1,8 @@
 package com.cinch.shared.coach
 
+import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetConfig
+import com.cinch.shared.prefs.InMemoryKeyValueStore
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
@@ -58,7 +60,9 @@ class PlanCoachWeekTest {
         val statements = SqlCardStatementRepository(db, io)
         return Fixture(
             budgets, expenses, cards, incomes, fixed,
-            PlanCoachWeek(budgets, expenses, cards, incomes, fixed, statements, BudgetEngine(), CoachRules()),
+            PlanCoachWeek(
+                budgets, expenses, cards, incomes, fixed, statements, BackupTracker(InMemoryKeyValueStore()), BudgetEngine(), CoachRules(),
+            ),
             statements,
         )
     }

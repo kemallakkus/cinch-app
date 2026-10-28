@@ -46,6 +46,7 @@ class SqlCardRepository(
                     monthly_rate_percent = card.monthlyRatePercent,
                     statement_day = card.statementDay?.toLong(),
                     last4 = card.last4,
+                    type = card.type.name,
                 )
                 queries.lastInsertedRowId().executeAsOne()
             }
@@ -59,6 +60,7 @@ class SqlCardRepository(
                 monthly_rate_percent = card.monthlyRatePercent,
                 statement_day = card.statementDay?.toLong(),
                 last4 = card.last4,
+                type = card.type.name,
                 id = card.id,
             )
         }

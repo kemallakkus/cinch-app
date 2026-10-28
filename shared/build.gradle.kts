@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.koinCompiler)
+    // Yedek dosyası (JSON).
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -33,6 +35,7 @@ kotlin {
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
+            implementation(libs.kotlinx.serialization.json)
             // Uygulama modülü @KoinApplication ve modül sınıflarını görsün diye api.
             api(libs.koin.core)
             api(libs.koin.annotations)

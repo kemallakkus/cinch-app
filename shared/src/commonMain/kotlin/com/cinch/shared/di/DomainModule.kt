@@ -1,6 +1,9 @@
 package com.cinch.shared.di
 
+import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetEngine
+import com.cinch.shared.budget.CashBalanceStore
+import com.cinch.shared.budget.ForecastCashFlow
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.FixedPayments
@@ -20,6 +23,7 @@ import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.parser.QuickEntryParser
+import com.cinch.shared.prefs.KeyValueStore
 import com.cinch.shared.receipt.ReceiptParser
 import com.cinch.shared.statement.StatementReader
 import com.cinch.shared.reconcile.Reconciler
@@ -82,9 +86,10 @@ class DomainModule {
         incomes: IncomeRepository,
         fixedExpenses: FixedExpenseRepository,
         statements: CardStatementRepository,
+        backups: BackupTracker,
         engine: BudgetEngine,
         rules: CoachRules,
-    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, fixedExpenses, statements, engine, rules)
+    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, fixedExpenses, statements, backups, engine, rules)
 
     @Factory
     fun observeMonthSummary(
@@ -100,6 +105,19 @@ class DomainModule {
 
     @Factory
     fun fixedPayments(expenses: ExpenseRepository): FixedPayments = FixedPayments(expenses)
+
+    @Factory
+    fun forecastCashFlow(
+        budgets: BudgetRepository,
+        incomes: IncomeRepository,
+        fixedExpenses: FixedExpenseRepository,
+        expenses: ExpenseRepository,
+        cards: CardRepository,
+        statements: CardStatementRepository,
+    ): ForecastCashFlow = ForecastCashFlow(budgets, incomes, fixedExpenses, expenses, cards, statements)
+
+    @Single
+    fun cashBalanceStore(prefs: KeyValueStore): CashBalanceStore = CashBalanceStore(prefs)
 
     @Factory
     fun activeFixedExpenses(

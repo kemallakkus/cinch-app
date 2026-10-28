@@ -8,13 +8,17 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 
+/** Kredi kartında ekstre, borç ve faiz var; banka kartı (debit) harcamayı doğrudan hesaptan düşer. */
+enum class CardType { CREDIT, DEBIT }
+
 /**
- * Kredi kartı.
+ * Kredi ya da banka kartı.
  *
  * @param carriedBalance taşınan (önceki dönemden kalan) borç.
  * @param monthlyRatePercent aylık faiz + vergi oranı (ör. 4.9).
  * @param statementDay ekstre kesim günü (1–31); ay o kadar uzun değilse ayın son günü sayılır.
  * @param last4 kart numarasının son 4 hanesi; banka ekranı fotoğrafındaki "•••• 1243" ile eşlemek için.
+ * @param type banka kartında ekstre günü, eski borç ve faiz yoktur.
  */
 data class Card(
     val id: Long = 0,
@@ -23,8 +27,11 @@ data class Card(
     val monthlyRatePercent: Double = 4.9,
     val statementDay: Int? = null,
     val last4: String? = null,
+    val type: CardType = CardType.CREDIT,
 ) {
     val currency: Currency get() = carriedBalance.currency
+
+    val isCredit: Boolean get() = type == CardType.CREDIT
 
     /** [from]..[to] (ikisi dahil) aralığına düşen ekstre günleri. Ekstre günü yoksa boş. */
     fun statementDatesBetween(from: LocalDate, to: LocalDate): List<LocalDate> =

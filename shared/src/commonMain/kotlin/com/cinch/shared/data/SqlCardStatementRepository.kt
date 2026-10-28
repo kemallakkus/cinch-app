@@ -32,6 +32,12 @@ class SqlCardStatementRepository(
                 .distinctBy { it.cardId }
         }
 
+    override fun observeLatestPerCard(): Flow<List<CardStatement>> =
+        queries.allStatements()
+            .asFlow()
+            .mapToList(ioDispatcher)
+            .map { rows -> rows.map { it.toDomain() }.distinctBy { it.cardId } }
+
     override suspend fun add(statement: CardStatement): Long =
         withContext(ioDispatcher) {
             // Tutarlar tek para biriminde; okunan ilk tutarın birimi, yoksa TL.

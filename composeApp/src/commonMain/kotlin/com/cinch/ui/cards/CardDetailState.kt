@@ -36,7 +36,22 @@ data class CardDetailState(
     val reconciliation: ReconciliationResult? = null,
     val statement: CardStatement? = null,
     val statementStartBalance: Money? = null,
+    val statementHistory: List<StatementPoint> = emptyList(),
 ) {
+    /**
+     * Bankanın dönem içi harcamasının ne kadarı Cinch'e girilmiş (0–1). Okuma bu döneme ait değilse ya da
+     * banka tutarı okunamadıysa null.
+     */
+    val recordedShare: Float?
+        get() {
+            val reading = statement ?: return null
+            val bank = reading.periodSpending ?: return null
+            val ours = periodTotal ?: return null
+            val start = period?.start ?: return null
+            if (reading.readOn < start || bank.isZero || bank.isNegative || bank.currency != ours.currency) return null
+            return (ours.minor.toFloat() / bank.minor.toFloat()).coerceIn(0f, 1f)
+        }
+
     /** Bu ekstreye ilk okumadan bu yana ödenen ("52.331 → 31.393": 20.938 ₺). */
     val statementPaid: Money?
         get() {
@@ -46,6 +61,10 @@ data class CardDetailState(
             return (start - now).takeIf { !it.isNegative && !it.isZero }
         }
 }
+
+/** Bir ekstrenin tutarı: o son ödeme tarihi için ilk okunan (ödenmeden önceki) borç. */
+@Immutable
+data class StatementPoint(val dueDate: LocalDate, val amount: Money)
 
 sealed interface CardDetailEvent {
     /** Yazılan banka tutarını kayıtlarla karşılaştır. */

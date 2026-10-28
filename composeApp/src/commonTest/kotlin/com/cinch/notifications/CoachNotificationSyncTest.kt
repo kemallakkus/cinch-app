@@ -1,6 +1,8 @@
 package com.cinch.notifications
 
+import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetConfig
+import com.cinch.shared.prefs.InMemoryKeyValueStore
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.coach.CoachNotification
 import com.cinch.shared.coach.CoachNotificationPlanner
@@ -71,7 +73,7 @@ class CoachNotificationSyncTest {
         val clock = FakeClock(wednesday, LocalTime(12, 0))
         val plan = PlanCoachWeek(
             budgets, expenses, cards, FakeIncomeRepository(), FakeFixedExpenseRepository(), FakeCardStatementRepository(),
-            BudgetEngine(), CoachRules(),
+            BackupTracker(InMemoryKeyValueStore()), BudgetEngine(), CoachRules(),
         )
         val scheduler = FakeScheduler()
         val sync = CoachNotificationSync(

@@ -9,6 +9,9 @@ interface CorrectionStore {
 
     /** Kullanıcı bir kaydı düzelttiğinde çağrılır; kelime→kategori öğrenilir. */
     fun learn(token: String, category: Category)
+
+    /** Kayıtlar dışarıdan değiştiyse (yedekten geri yükleme) bellekteki kopyayı yeniler. */
+    fun reload() = Unit
 }
 
 class InMemoryCorrectionStore : CorrectionStore {

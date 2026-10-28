@@ -12,9 +12,13 @@ import com.cinch.navigation.InsightsRoute
 import com.cinch.navigation.ReceiptReviewRoute
 import com.cinch.navigation.StatementReviewRoute
 import com.cinch.notifications.NotificationAccessChecker
+import com.cinch.shared.backup.BackupTracker
+import com.cinch.shared.backup.Backups
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.budget.ActiveFixedExpenses
 import com.cinch.shared.budget.FixedPayments
+import com.cinch.shared.budget.CashBalanceStore
+import com.cinch.shared.budget.ForecastCashFlow
 import com.cinch.shared.budget.ObserveMonthSummary
 import com.cinch.shared.budget.ObserveSpendingBreakdown
 import com.cinch.shared.category.Categorizer
@@ -34,6 +38,7 @@ import com.cinch.ui.budget.BudgetSetupViewModel
 import com.cinch.ui.cards.CardDetailViewModel
 import com.cinch.ui.cards.CardEditViewModel
 import com.cinch.ui.cards.CardsViewModel
+import com.cinch.ui.cashflow.CashCalendarViewModel
 import com.cinch.ui.history.ExpenseEditViewModel
 import com.cinch.ui.history.HistoryViewModel
 import com.cinch.ui.home.HomeViewModel
@@ -153,8 +158,16 @@ class UiModule {
         IncomeEditViewModel(route, incomes)
 
     @KoinViewModel
-    fun settingsViewModel(budgets: BudgetRepository, access: NotificationAccessChecker): SettingsViewModel =
-        SettingsViewModel(budgets, access)
+    fun settingsViewModel(
+        budgets: BudgetRepository,
+        access: NotificationAccessChecker,
+        backups: Backups,
+        tracker: BackupTracker,
+        expenses: ExpenseRepository,
+        cards: CardRepository,
+        fixedExpenses: FixedExpenseRepository,
+        clock: LocalClock,
+    ): SettingsViewModel = SettingsViewModel(budgets, access, backups, tracker, expenses, cards, fixedExpenses, clock)
 
     @KoinViewModel
     fun debtDetailViewModel(
@@ -218,6 +231,13 @@ class UiModule {
         clock = clock,
         ioDispatcher = ioDispatcher,
     )
+
+    @KoinViewModel
+    fun cashCalendarViewModel(
+        forecast: ForecastCashFlow,
+        balances: CashBalanceStore,
+        clock: LocalClock,
+    ): CashCalendarViewModel = CashCalendarViewModel(forecast, balances, clock)
 
     @KoinViewModel
     fun insightsViewModel(

@@ -1,5 +1,6 @@
 package com.cinch.shared.coach
 
+import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.discretionary
 import com.cinch.shared.budget.inCurrencyOf
@@ -34,6 +35,7 @@ class PlanCoachWeek(
     private val incomes: IncomeRepository,
     private val fixedExpenses: FixedExpenseRepository,
     private val statements: CardStatementRepository,
+    private val backups: BackupTracker,
     private val engine: BudgetEngine,
     private val rules: CoachRules,
     private val lookbackDays: Int = 30,
@@ -88,6 +90,7 @@ class PlanCoachWeek(
             salaryDates = salaryDates(budget, day, lookahead),
             fixedDues = fixedDues(budget, day),
             cardDues = cardDues(day),
+            lastBackup = backups.lastBackup(),
         )
     }
 

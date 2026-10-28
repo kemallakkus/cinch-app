@@ -1,5 +1,8 @@
 package com.cinch.shared.di
 
+import com.cinch.shared.backup.BackupService
+import com.cinch.shared.backup.Backups
+import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.category.CorrectionStore
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
@@ -17,6 +20,7 @@ import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
+import com.cinch.shared.prefs.KeyValueStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -75,4 +79,14 @@ class DataModule {
 
     @Single
     fun correctionStore(db: CinchDatabase): CorrectionStore = SqlCorrectionStore(db)
+
+    @Single
+    fun backupService(
+        db: CinchDatabase,
+        corrections: CorrectionStore,
+        @Named("ioDispatcher") io: CoroutineDispatcher,
+    ): Backups = BackupService(db, corrections, io)
+
+    @Single
+    fun backupTracker(prefs: KeyValueStore): BackupTracker = BackupTracker(prefs)
 }

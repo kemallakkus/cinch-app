@@ -89,6 +89,7 @@ fun MonthScreen(
     onOpenDebt: (Long) -> Unit,
     onOpenInsights: () -> Unit = {},
     onScanBill: (() -> Unit)? = null,
+    onOpenCashCalendar: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     confettiTrigger: Int = 0,
 ) {
@@ -113,6 +114,8 @@ fun MonthScreen(
                 item(key = "summary") {
                     if (summary == null || !summary.hasIncome) EmptySummary(onAddIncome) else SummaryCard(summary)
                 }
+
+                item(key = "cashCalendar") { CashCalendarTeaser(onOpenCashCalendar) }
 
                 state.breakdown?.takeIf { !it.isEmpty }?.let { breakdown ->
                     item(key = "breakdown") { BreakdownTeaser(breakdown, onClick = onOpenInsights) }
@@ -531,5 +534,31 @@ private fun BreakdownTeaser(breakdown: SpendingBreakdown, onClick: () -> Unit) {
                 color = changeColor(breakdown.change),
             )
         }
+    }
+}
+
+/** "Para takvimi" girişi: gelir, ödeme ve kart günleri, maaşa kadar yetip yetmediği. */
+@Composable
+private fun CashCalendarTeaser(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text("📅", style = MaterialTheme.typography.headlineSmall)
+        Column(Modifier.weight(1f)) {
+            Text("Para takvimi", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Maaşa kadar yeter mi? Gelir, ödeme ve kart günleri gün gün.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text("›", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

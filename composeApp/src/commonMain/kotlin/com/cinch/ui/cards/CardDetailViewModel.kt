@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardStatement
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.CardRepository
@@ -78,6 +79,7 @@ class CardDetailViewModel(
             statementStartBalance = latest?.dueDate?.let { due ->
                 readings.filter { it.dueDate == due }.mapNotNull { it.statementBalance }.maxOrNull()
             },
+            statementHistory = statementHistory(readings),
             isLoading = false,
             card = card,
             period = card.currentPeriod(today),
@@ -136,9 +138,20 @@ class CardDetailViewModel(
         }
     }
 
+    /** Son 6 ekstre, eskiden yeniye: her son ödeme tarihi için en yüksek (ilk) okunan borç. */
+    private fun statementHistory(readings: List<CardStatement>): List<StatementPoint> =
+        readings
+            .filter { it.dueDate != null && it.statementBalance != null }
+            .groupBy { it.dueDate!! }
+            .map { (due, list) -> StatementPoint(due, list.mapNotNull { it.statementBalance }.max()) }
+            .sortedBy { it.dueDate }
+            .takeLast(HISTORY_SIZE)
+
     private fun firstMonthInterest(card: Card): Money? {
         if (card.carriedBalance.isZero) return null
         val minor = (card.carriedBalance.minor * card.monthlyRatePercent / 100.0).roundToLong()
         return Money(minor, card.currency)
     }
 }
+
+private const val HISTORY_SIZE = 6

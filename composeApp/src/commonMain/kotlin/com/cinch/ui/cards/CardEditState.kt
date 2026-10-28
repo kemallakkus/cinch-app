@@ -2,6 +2,7 @@ package com.cinch.ui.cards
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
+import com.cinch.shared.domain.CardType
 import com.cinch.ui.common.formatPercent
 
 /** Hata bayrakları son kaydetme denemesinden kalır; ilgili alan düzenlenince kalkar. */
@@ -9,6 +10,7 @@ import com.cinch.ui.common.formatPercent
 data class CardEditState(
     val isNew: Boolean,
     val isLoading: Boolean = !isNew,
+    val type: CardType = CardType.CREDIT,
     val name: TextFieldState = TextFieldState(),
     val statementDay: Int? = null,
     val carriedBalance: TextFieldState = TextFieldState(),
@@ -26,6 +28,7 @@ data class CardEditState(
 }
 
 sealed interface CardEditEvent {
+    data class TypePicked(val type: CardType) : CardEditEvent
     data class StatementDayPicked(val day: Int?) : CardEditEvent
     data object Save : CardEditEvent
     data object DeleteRequested : CardEditEvent

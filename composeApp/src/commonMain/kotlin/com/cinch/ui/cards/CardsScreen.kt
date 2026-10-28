@@ -117,7 +117,11 @@ fun CardTile(card: Card, modifier: Modifier = Modifier, onClick: (() -> Unit)? =
                 color = Color.White,
             )
             Text(
-                card.statementDay?.let { "Hesap kesim: ${dayOfMonthLabel(it).lowercase()}" } ?: "Hesap kesim günü yok",
+                when {
+                    !card.isCredit -> "Banka kartı"
+                    card.statementDay != null -> "Hesap kesim: ${dayOfMonthLabel(card.statementDay).lowercase()}"
+                    else -> "Hesap kesim günü yok"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.85f),
             )
@@ -131,7 +135,9 @@ fun CardTile(card: Card, modifier: Modifier = Modifier, onClick: (() -> Unit)? =
                 .background(Color(0xFFFFD98A).copy(alpha = 0.9f)),
         )
         Column(Modifier.align(Alignment.BottomEnd), horizontalAlignment = Alignment.End) {
-            if (card.carriedBalance.isZero) {
+            if (!card.isCredit) {
+                Text("Hesaptan öder", style = MaterialTheme.typography.titleSmall, color = Color.White)
+            } else if (card.carriedBalance.isZero) {
                 Text("Eski borç yok ✨", style = MaterialTheme.typography.titleSmall, color = Color.White)
             } else {
                 Text(card.carriedBalance.display(), style = MaterialTheme.typography.titleLarge, color = Color.White)

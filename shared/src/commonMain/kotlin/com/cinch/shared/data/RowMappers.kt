@@ -3,6 +3,7 @@ package com.cinch.shared.data
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.CardStatement
+import com.cinch.shared.domain.CardType
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
@@ -84,6 +85,7 @@ internal fun CardRow.toDomain(): Card = Card(
     monthlyRatePercent = monthly_rate_percent,
     statementDay = statement_day?.toInt(),
     last4 = last4,
+    type = CardType.entries.firstOrNull { it.name == type } ?: CardType.CREDIT,
 )
 
 internal fun StatementRow.toDomain(): CardStatement {

@@ -173,4 +173,21 @@ class CardDetailViewModelTest {
         assertEquals(tl(20_938), f.state.statementPaid) // 52.331 → 31.393
         assertEquals(3, f.state.statement?.daysUntilDue(today))
     }
+
+    @Test
+    fun statementHistory_oneBarPerDueDate_andRecordedShare() = testVm { f ->
+        // Kart kesim günü 15: bugün (3 Şubat) dönem 16 Ocak'tan başlar.
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 20), grossAmount = tl(900), cardId = f.cardId))
+        f.statements.add(CardStatement(cardId = f.cardId, readOn = LocalDate(2024, 12, 20), dueDate = LocalDate(2024, 12, 25), statementBalance = tl(4_000)))
+        f.statements.add(CardStatement(cardId = f.cardId, readOn = LocalDate(2025, 1, 20), dueDate = LocalDate(2025, 1, 25), statementBalance = tl(5_000)))
+        f.statements.add(CardStatement(cardId = f.cardId, readOn = LocalDate(2025, 1, 23), dueDate = LocalDate(2025, 1, 25), statementBalance = tl(1_000)))
+        f.statements.add(
+            CardStatement(cardId = f.cardId, readOn = LocalDate(2025, 2, 2), dueDate = LocalDate(2025, 2, 25), statementBalance = tl(6_000), periodSpending = tl(1_000)),
+        )
+        runCurrent()
+
+        // Ocak ekstresi ödendikçe 5.000 → 1.000 okunmuş; grafikte ilk (tam) tutar.
+        assertEquals(listOf(tl(4_000), tl(5_000), tl(6_000)), f.state.statementHistory.map { it.amount })
+        assertEquals(0.9f, f.state.recordedShare) // banka 1.000 diyor, Cinch'te 900
+    }
 }

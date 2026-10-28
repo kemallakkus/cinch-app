@@ -14,11 +14,13 @@ import com.cinch.shared.domain.Category
  */
 class SqlCorrectionStore(private val db: CinchDatabase) : CorrectionStore {
 
-    private val cache: MutableMap<String, Category> by lazy {
-        db.cinchQueries.allCorrections().executeAsList()
+    private var loaded: MutableMap<String, Category>? = null
+
+    private val cache: MutableMap<String, Category>
+        get() = loaded ?: db.cinchQueries.allCorrections().executeAsList()
             .associate { it.keyword to categoryOf(it.category) }
             .toMutableMap()
-    }
+            .also { loaded = it }
 
     override fun categoryFor(token: String): Category? = cache[TextNormalizer.normalize(token)]
 
@@ -26,5 +28,10 @@ class SqlCorrectionStore(private val db: CinchDatabase) : CorrectionStore {
         val key = TextNormalizer.normalize(token)
         db.cinchQueries.upsertCorrection(key, category.name)
         cache[key] = category
+    }
+
+    /** Bir sonraki okumada tablo yeniden yüklenir. */
+    override fun reload() {
+        loaded = null
     }
 }

@@ -35,6 +35,8 @@ cinch-app/
 | `Reconciler` | Elle girilen güncel borç ile kayıt farkını bulur ("103 ₺ yazmayı unutmuşsun") | `reconcile/` |
 | `CoachRules` | 7 günün yerel bildirimlerini üretir; sessiz saat + günde max 2 + cümle varyasyonu | `coach/` |
 | `ReceiptParser` / `OcrLayout` | Fişten/faturadan okunan yazıdan tutar ("TOPLAM", "Ödenecek tutar"), tarih, son ödeme tarihi, mağaza adı, kategori ve kartla ödendi ipucu. `OcrLayout` sütunlara bölünmüş satırları ("TOPLAM" … "*96,15") görüntüdeki hizalarına göre birleştirir | `receipt/` |
+| `CashFlows` / `ForecastCashFlow` | Para takvimi: bugünden 5 hafta gün gün giriş (maaş) ve çıkış (sabit giderler ödeme günlerinde, kart ödemesi okunan ekstrenin son ödeme gününde, günlük harcama payı); girilen bakiyeyle gün sonu bakiyesi, ilk eksiye düşülen gün, maaştan önce kalan ve "günde ne kadar kısmalı". Taksit ve esnek borcun kalanı aşılmaz, kartla ödenen sabit giderler ekstrede sayıldığı için ayrıca düşülmez | `budget/CashFlow.kt` |
+| `BackupService` / `ExpenseCsv` / `BackupTracker` | Tek dosyalık JSON yedek (tüm tablolar, kimlikleriyle; geri yükleme tek işlemde, öğrenilen kategoriler dahil), Excel'e uygun CSV (`;` ayraç, `1234,56`, UTF-8 BOM), son yedek günü | `backup/` |
 | `StatementReader` | Banka uygulamasındaki kart ekranının **fotoğraflarından** (uygulamalar ekran görüntüsünü engeller; başka telefonla çekilir) ekstre okur: kalan ekstre borcu, asgari, son ödeme ve kesim tarihleri, dönem içi harcama, gelecek taksitler, limit, son 4 hane, hareketler (taksit, ödeme). Bankaya özel şablon yok: ortak etiket sözlüğü + değeri etiketin kendi satırında, sağında ya da altında (aynı sütun) arama. İki sayı biçimi ("52.331,00" / "52,331.00"), yılsız tarihler ("6 Ekim", "26 EYL") | `statement/` |
 | `OcrScan` / `OcrCodec` | Okunan satırlar konumlarıyla; rotada taşınmak için düz metne çevrilir (fotoğraf saklanmaz) | `receipt/` |
 | `BillMatcher` | Abonelik faturasını sabit gidere eşler: ad faturada geçiyorsa ya da kurum adı hizmeti ele veriyorsa ("Enerjisa" → Elektrik, "İGDAŞ" → Doğalgaz) | `receipt/` |
@@ -62,7 +64,7 @@ Eksik bağımlılık derleme anında hata verir (compile safety).
 
 **Şema sürümleri:** `Cinch.sq` güncel şemadır; her değişiklik ayrıca `<eski sürüm>.sqm` dosyasına migration
 olarak yazılır (`1.sqm`: gelir tablosu, bütçedeki maaş günü "Maaş" gelirine taşınır; `2.sqm`: sabit gider
-tablosu ve harcamaya `fixed_expense_id`; `3.sqm`: sabit giderlere ödeme şekli, taksit ve borç alanları; `4.sqm`: kartlara son 4 hane, okunan ekstreler tablosu). Telefondaki eski
+tablosu ve harcamaya `fixed_expense_id`; `3.sqm`: sabit giderlere ödeme şekli, taksit ve borç alanları; `4.sqm`: kartlara son 4 hane, okunan ekstreler tablosu; `5.sqm`: kart türü, kredi / banka). Telefondaki eski
 kurulum açılışta veri kaybetmeden yükseltilir; `MigrationTest` bunu doğrular. Yeni şema değişikliğinde
 bir sonraki `<n>.sqm` eklenir, `Cinch.sq` güncellenir.
 
@@ -77,6 +79,9 @@ Taksit sayısı ve kalan borç saklanmaz, geçmiş ödemelerden hesaplanır (`De
 ay hesabına ve hatırlatmalara girmez, "Biten borçlar"a geçer. Esnek borçta bitiş tahmini "genelde ödediğim"
 tutarla, o yoksa son 3 ödemenin ortalamasıyla yapılır. Koç ödeme gününden bir gün önce (19:00) ve o gün
 akşam hâlâ işaretlenmemişse (20:30) hatırlatır.
+
+**Yedek:** son yedek 30 günden eskiyse ya da hiç yedek yokken 20'den fazla kayıt birikmişse haftada bir (haftanın 2.
+günü 19:00) hatırlatılır.
 
 **Kart son ödemesi:** okunan son ekstrenin son ödeme tarihinden 3 gün önce 10:00'da ve o gün 09:30'da, kalan borç ve
 asgariyle hatırlatılır. Borç sıfır okunduysa (ödenmiş) hatırlatılmaz; ödedikten sonra ekranı yeniden okutmak yeter.
@@ -99,11 +104,12 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 | Fiş / fatura okuma | Hızlı kayıt alanındaki 📷: "Fiş ya da fatura tara" (ML Kit belge tarayıcı: kenar bulur, kırpar) ya da "Galeriden seç". Yazı telefonda okunur, fotoğraf saklanmaz, internete gitmez. Onay ekranında tutar, açıklama, kategori, tarih ve kart dolu gelir; kullanıcı kontrol edip kaydeder. Faturada eşleşen sabit gider seçili gelir ve "Bu ay"da ödendi işaretlenir (bu ay zaten ödendiyse uyarır). "Bu ay"daki "📷 Fatura" düğmesi de aynı akışı açar. Şimdilik yalnız Android; iOS'ta düğmeler gizli | `receipt/` (platform), `ui/receipt/` |
 | Nereye gitti? | "Bu ay"daki özet kartından açılır: halka grafik, geçen ayla kıyas, kategoriler (pay çubuğu, ↑/↓ değişim; dokun → o ayın o kategorideki kayıtları), en çok para giden kelimeler; ay ay gezilir | `ui/insights/` |
 | Bu ay | Gelir − sabit giderler − harcamalar = elinde kalan; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir; borçlarda ilerleme çubuğu, borca dokun → detay: ilerleme, bitiş tahmini, ödeme ekle/sil) ve gelirler, ekleme/düzenleme | `ui/month/` |
-| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu | `ui/settings/` |
+| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu; **yedek al** (sistemin kaydetme penceresi: telefon, Drive…), **yedekten geri yükle** (önce içindekileri gösterip onay ister), **harcamaları Excel'e aktar** (CSV). Son yedek 30 günü geçince uyarı rengiyle | `ui/settings/`, `files/` (platform) |
 | Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori/tarih önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir. Tarih "dün", "cuma" yazınca değişir; 📅 çipinden takvimle de seçilir | `ui/home/QuickEntryBar.kt` |
-| Kartlar | Kart listesi; ekleme/düzenleme (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
+| Kartlar | Kart listesi; ekleme/düzenleme: **kredi kartı** (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz) ya da **banka kartı** (yalnız ad: ekstre, borç, faiz yok; hareketlerden eksik harcama bulma için). Silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
+| Para takvimi | "Bu ay"daki "📅 Para takvimi": hesaptaki parayı yazınca "Maaşa (15 Kas) kadar yetiyor, maaştan önceki gün ~3.200 ₺ kalır" ya da "27 Eki'de eksiye düşüyorsun; günde ~300 ₺ az harcarsan yetiyor". Altında hareketli günler ve gün sonu bakiyesi; ekstresi okunmamış kredi kartı varsa uyarır | `ui/cashflow/` |
 | Ekstre okuma | Kart detayında "🖼️ Fotoğraf seç" / "📷 Tara" ya da Kartlar'daki "📸 Ekstre oku": banka uygulamasındaki kart ekranının fotoğrafları (en fazla 6; özet, "daha fazla", hareketler). Onay ekranında kart (son 4 haneden kendiliğinden), son ödeme, kalan borç, asgari, kesim tarihi; bankadaki hareketler bu kartın kayıtlarıyla eşlenir: eşleşen ✅, eksik ➕ (seçili gelir, kaydedince eklenir), taksit 🔁 (seçilmeden), ödeme 💸 | `ui/statement/` |
-| Kart detayı | Okunan son ekstre: son ödeme ve kalan gün, kalan borç ve ödeme ilerlemesi, "yalnız asgariyi ödersen ~X faiz", limit doluluğu / aşımı, gelecek taksitler, bankanın dönem içi tutarı. Bu ekstreye girecek harcamalar; "bankayla karşılaştır" (eksik farkı tek dokunuşla ekleme); eski borcun aylık ödemeyle ne zaman biteceği ve toplam faizi | `ui/cards/CardDetail*` |
+| Kart detayı | Okunan son ekstre: son ödeme ve kalan gün, kalan borç ve ödeme ilerlemesi, "yalnız asgariyi ödersen ~X faiz", limit doluluğu / aşımı, gelecek taksitler, **kayıt tutma oranı** ("kart harcamalarının %92'sini girmişsin"), **son 6 ekstrenin grafiği** ve öncekine göre değişim. Bu ekstreye girecek harcamalar; "bankayla karşılaştır" (eksik farkı tek dokunuşla ekleme); eski borcun aylık ödemeyle ne zaman biteceği ve toplam faizi | `ui/cards/CardDetail*` |
 
 **Görünüm (sıcak ve oyunsu):** krem zemin, mercan/şeftali vurgular; nane yeşili "iyi gidiyorsun", bal sarısı
 "dikkat". Büyük yuvarlak köşeler, her kategoriye kendi pastel rengi, ana rakamlar degrade kartlarda ve değişince
@@ -169,4 +175,5 @@ Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.1
 - Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - iOS'ta fiş okuma: VisionKit tarayıcı + Vision metin tanıma (`composeApp/src/iosMain/.../receipt/ReceiptCapture.ios.kt` şimdilik boş)
+- iOS'ta yedek dosyası seçici: `UIDocumentPickerViewController` (`composeApp/src/iosMain/.../files/FileTransfer.ios.kt` şimdilik boş)
 - iOS Xcode projesini oluşturma (`iosApp/` Swift kaynakları hazır)

@@ -12,6 +12,9 @@ interface CardStatementRepository {
     /** Her kartın en son okuması (koç hatırlatmaları için). */
     suspend fun latestPerCard(): List<CardStatement>
 
+    /** Her kartın en son okumasını izler (para takvimi). */
+    fun observeLatestPerCard(): Flow<List<CardStatement>>
+
     /** Ekler ve yeni kaydın id'sini döner. [CardStatement.id] yok sayılır. */
     suspend fun add(statement: CardStatement): Long
 }

@@ -103,8 +103,11 @@ fun CardDetailScreen(
                     item(key = "tile") { CardTile(card) }
                     item(key = "statement") { StatementCard(card, state, onScan = onScanStatement, onPick = onPickStatement) }
                     item(key = "period") { PeriodCard(card, state) }
-                    item(key = "reconcile") { ReconcileSection(state, onEvent) }
-                    item(key = "payoff") { PayoffSection(card, state) }
+                    // Banka kartında ekstre, borç ve faiz yok.
+                    if (card.isCredit) {
+                        item(key = "reconcile") { ReconcileSection(state, onEvent) }
+                        item(key = "payoff") { PayoffSection(card, state) }
+                    }
                     if (state.periodExpenses.isNotEmpty()) {
                         item(key = "expensesHeader") {
                             Text("Bu dönemin harcamaları", style = MaterialTheme.typography.titleMedium)
@@ -126,12 +129,15 @@ private fun PeriodCard(card: CreditCard, state: CardDetailState) {
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             val period = state.period
-            Text("Bu ekstreye girecek harcamalar", style = MaterialTheme.typography.labelLarge)
+            Text(if (card.isCredit) "Bu ekstreye girecek harcamalar" else "Bu ayın harcamaları", style = MaterialTheme.typography.labelLarge)
             Text((state.periodTotal ?: Money.zero(card.currency)).display(), style = MaterialTheme.typography.displaySmall)
             val range = period?.let { "${it.start.shortLabel()} – ${it.endInclusive.shortLabel()}" }.orEmpty()
             Text(
-                if (card.statementDay != null) "$range · hesap kesim ${dayOfMonthLabel(card.statementDay).lowercase()}"
-                else "$range · hesap kesim günü girilmedi, ayın başından sayıyoruz",
+                when {
+                    !card.isCredit -> range
+                    card.statementDay != null -> "$range · hesap kesim ${dayOfMonthLabel(card.statementDay).lowercase()}"
+                    else -> "$range · hesap kesim günü girilmedi, ayın başından sayıyoruz"
+                },
                 style = MaterialTheme.typography.bodySmall,
             )
         }

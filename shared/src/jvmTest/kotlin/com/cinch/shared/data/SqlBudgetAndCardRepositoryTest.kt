@@ -2,6 +2,7 @@ package com.cinch.shared.data
 
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardType
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -111,5 +112,14 @@ class SqlBudgetAndCardRepositoryTest {
         val result = expenses.observeForCardBetween(qnb, LocalDate(2025, 1, 16), LocalDate(2025, 2, 15)).first()
 
         assertEquals(listOf(tl(20)), result.map { it.grossAmount })
+    }
+
+    @Test
+    fun card_debitTypeAndLast4_roundTrip() = runTest {
+        val repo = SqlCardRepository(newDatabase(), StandardTestDispatcher(testScheduler))
+        val card = Card(name = "Akbank Kart", carriedBalance = tl(0), last4 = "1221", type = CardType.DEBIT)
+        val id = repo.add(card)
+
+        assertEquals(card.copy(id = id), repo.get(id))
     }
 }

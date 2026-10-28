@@ -99,23 +99,26 @@ fun StatementReviewScreen(
 
             CardPicker(state, enabled, onEvent)
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Son ödeme tarihi", style = MaterialTheme.typography.titleSmall)
-                OutlinedButton(onClick = { picking = PickingDate.DUE }, enabled = enabled) {
-                    Text(state.dueDate?.let { "📅 ${it.shortLabel()} ${it.year} ▾" } ?: "📅 Seç ▾")
+            // Banka kartında ekstre yok: yalnız hareketler karşılaştırılır.
+            if (state.selectedCard?.isCredit != false) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Son ödeme tarihi", style = MaterialTheme.typography.titleSmall)
+                    OutlinedButton(onClick = { picking = PickingDate.DUE }, enabled = enabled) {
+                        Text(state.dueDate?.let { "📅 ${it.withYear()} ▾" } ?: "📅 Seç ▾")
+                    }
                 }
-            }
-            MoneyField(state.balance, "Kalan ekstre borcu", "Ödemen gereken; ödedikçe azalır", enabled)
-            MoneyField(state.minimum, "Asgari ödeme (isteğe bağlı)", "Bankanın en az ödemeni istediği tutar", enabled)
+                MoneyField(state.balance, "Kalan ekstre borcu", "Ödemen gereken; ödedikçe azalır", enabled)
+                MoneyField(state.minimum, "Asgari ödeme (isteğe bağlı)", "Bankanın en az ödemeni istediği tutar", enabled)
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Ekstre kesim tarihi", style = MaterialTheme.typography.titleSmall)
-                OutlinedButton(onClick = { picking = PickingDate.STATEMENT }, enabled = enabled) {
-                    Text(state.statementDate?.let { "📅 ${it.shortLabel()} ${it.year} ▾" } ?: "📅 Seç ▾")
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Ekstre kesim tarihi", style = MaterialTheme.typography.titleSmall)
+                    OutlinedButton(onClick = { picking = PickingDate.STATEMENT }, enabled = enabled) {
+                        Text(state.statementDate?.let { "📅 ${it.withYear()} ▾" } ?: "📅 Seç ▾")
+                    }
                 }
-            }
 
-            OtherValues(draft)
+                OtherValues(draft)
+            }
 
             if (state.transactions.isNotEmpty()) {
                 TransactionsSection(state, enabled, onEvent)
@@ -272,6 +275,16 @@ private fun TransactionsSection(state: StatementReviewState, enabled: Boolean, o
                 text = "Bankadaki her harcamayı bu karta girdiklerinle tutar ve tarihe (en fazla 3 gün fark) bakarak " +
                     "eşleriz. Bankada olup sende olmayanlar seçili gelir; kaydedince eklenir. Taksitler seçilmeden gelir: " +
                     "alışverişi tek seferde girdiysen tekrar eklenmesin.",
+            )
+        }
+        val matched = counts[TransactionStatus.MATCHED] ?: 0
+        val spending = matched + (counts[TransactionStatus.MISSING] ?: 0)
+        if (spending > 0) {
+            Text(
+                "Bankadaki $spending harcamanın $matched tanesini zaten girmişsin (%${matched * 100 / spending})" +
+                    if (matched == spending) " 👏" else "",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (matched * 10 >= spending * 9) CinchTheme.colors.good else MaterialTheme.colorScheme.onSurface,
             )
         }
         Text(
