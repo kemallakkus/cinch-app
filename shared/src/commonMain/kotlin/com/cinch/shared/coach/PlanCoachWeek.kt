@@ -5,6 +5,7 @@ import com.cinch.shared.budget.discretionary
 import com.cinch.shared.budget.inCurrencyOf
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
+import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
@@ -32,6 +33,7 @@ class PlanCoachWeek(
     private val cards: CardRepository,
     private val incomes: IncomeRepository,
     private val fixedExpenses: FixedExpenseRepository,
+    private val statements: CardStatementRepository,
     private val engine: BudgetEngine,
     private val rules: CoachRules,
     private val lookbackDays: Int = 30,
@@ -85,7 +87,18 @@ class PlanCoachWeek(
             statementDates = statementDates,
             salaryDates = salaryDates(budget, day, lookahead),
             fixedDues = fixedDues(budget, day),
+            cardDues = cardDues(day),
         )
+    }
+
+    /** Her kartın son okunan ekstresinden, günü geçmemiş son ödemeler. */
+    private suspend fun cardDues(day: LocalDate): List<CardDue> {
+        val names = cards.all().associate { it.id to it.name }
+        return statements.latestPerCard().mapNotNull { statement ->
+            val due = statement.dueDate?.takeIf { it >= day } ?: return@mapNotNull null
+            val name = names[statement.cardId] ?: return@mapNotNull null // kart silinmiş
+            CardDue(name, due, statement.statementBalance, statement.minimumPayment)
+        }
     }
 
     /**

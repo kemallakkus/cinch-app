@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS card (
     -- Taşınan borç (kuruş) ve aylık faiz+vergi oranı (ör. 4.9)
     carried_balance_minor INTEGER NOT NULL DEFAULT 0,
     monthly_rate_percent REAL NOT NULL DEFAULT 4.9,
-    statement_day INTEGER
+    statement_day INTEGER,
+    -- Kart numarasının son 4 hanesi: banka ekranı fotoğrafındaki "•••• 1243" ile kart eşlenir.
+    last4 TEXT
 );
 
 CREATE TABLE IF NOT EXISTS expense (
@@ -73,6 +75,25 @@ CREATE TABLE IF NOT EXISTS income (
     day_of_month INTEGER
 );
 
+-- Banka ekranından okunan ekstre bilgileri; her okuma ayrı satır (ödeme ilerlemesi ve aylık kıyas için).
+-- Tutarlar kuruş; okunamayan alan NULL.
+CREATE TABLE IF NOT EXISTS card_statement (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id INTEGER NOT NULL,
+    read_epoch_day INTEGER NOT NULL,
+    statement_epoch_day INTEGER,
+    due_epoch_day INTEGER,
+    next_statement_epoch_day INTEGER,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    statement_balance_minor INTEGER,
+    minimum_payment_minor INTEGER,
+    period_spending_minor INTEGER,
+    future_installments_minor INTEGER,
+    total_debt_minor INTEGER,
+    credit_limit_minor INTEGER,
+    available_limit_minor INTEGER
+);
+
 -- ───────── expense ─────────
 insertExpense:
 INSERT INTO expense(date_epoch_day, gross_minor, chargeable_fraction, currency, category, card_id, note, raw_text, tokens, fixed_expense_id)
@@ -115,8 +136,8 @@ DELETE FROM expense WHERE id = ?;
 
 -- ───────── card ─────────
 insertCard:
-INSERT INTO card(name, currency, carried_balance_minor, monthly_rate_percent, statement_day)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO card(name, currency, carried_balance_minor, monthly_rate_percent, statement_day, last4)
+VALUES (?, ?, ?, ?, ?, ?);
 
 allCards:
 SELECT * FROM card ORDER BY id;
@@ -126,11 +147,30 @@ SELECT * FROM card WHERE id = ?;
 
 updateCard:
 UPDATE card
-SET name = ?, carried_balance_minor = ?, monthly_rate_percent = ?, statement_day = ?
+SET name = ?, carried_balance_minor = ?, monthly_rate_percent = ?, statement_day = ?, last4 = ?
 WHERE id = ?;
 
 deleteCard:
 DELETE FROM card WHERE id = ?;
+
+-- ───────── card_statement ─────────
+insertStatement:
+INSERT INTO card_statement(
+    card_id, read_epoch_day, statement_epoch_day, due_epoch_day, next_statement_epoch_day, currency,
+    statement_balance_minor, minimum_payment_minor, period_spending_minor, future_installments_minor,
+    total_debt_minor, credit_limit_minor, available_limit_minor
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- En yeni okuma üstte.
+statementsForCard:
+SELECT * FROM card_statement WHERE card_id = ? ORDER BY read_epoch_day DESC, id DESC;
+
+allStatements:
+SELECT * FROM card_statement ORDER BY read_epoch_day DESC, id DESC;
+
+deleteStatementsForCard:
+DELETE FROM card_statement WHERE card_id = ?;
 
 -- ───────── corrections ─────────
 upsertCorrection:

@@ -3,6 +3,7 @@ package com.cinch.shared.di
 import com.cinch.shared.category.CorrectionStore
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
+import com.cinch.shared.data.SqlCardStatementRepository
 import com.cinch.shared.data.SqlCorrectionStore
 import com.cinch.shared.data.SqlExpenseRepository
 import com.cinch.shared.data.SqlFixedExpenseRepository
@@ -12,6 +13,7 @@ import com.cinch.shared.db.DatabaseDriverFactory
 import com.cinch.shared.db.createDatabase
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
+import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
@@ -46,6 +48,12 @@ class DataModule {
         db: CinchDatabase,
         @Named("ioDispatcher") io: CoroutineDispatcher,
     ): CardRepository = SqlCardRepository(db, io)
+
+    @Single
+    fun cardStatementRepository(
+        db: CinchDatabase,
+        @Named("ioDispatcher") io: CoroutineDispatcher,
+    ): CardStatementRepository = SqlCardStatementRepository(db, io)
 
     @Single
     fun budgetRepository(

@@ -4,11 +4,13 @@ import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.data.SqlBudgetRepository
 import com.cinch.shared.data.SqlCardRepository
+import com.cinch.shared.data.SqlCardStatementRepository
 import com.cinch.shared.data.SqlExpenseRepository
 import com.cinch.shared.data.SqlFixedExpenseRepository
 import com.cinch.shared.data.SqlIncomeRepository
 import com.cinch.shared.data.newDatabase
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardStatement
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.FixedExpenseKind
@@ -42,6 +44,7 @@ class PlanCoachWeekTest {
         val incomes: SqlIncomeRepository,
         val fixed: SqlFixedExpenseRepository,
         val plan: PlanCoachWeek,
+        val statements: SqlCardStatementRepository,
     )
 
     private fun TestScope.fixture(): Fixture {
@@ -52,9 +55,11 @@ class PlanCoachWeekTest {
         val cards = SqlCardRepository(db, io)
         val incomes = SqlIncomeRepository(db, io)
         val fixed = SqlFixedExpenseRepository(db, io)
+        val statements = SqlCardStatementRepository(db, io)
         return Fixture(
             budgets, expenses, cards, incomes, fixed,
-            PlanCoachWeek(budgets, expenses, cards, incomes, fixed, BudgetEngine(), CoachRules()),
+            PlanCoachWeek(budgets, expenses, cards, incomes, fixed, statements, BudgetEngine(), CoachRules()),
+            statements,
         )
     }
 
@@ -216,5 +221,31 @@ class PlanCoachWeekTest {
         val due = f.plan(today).single { it.type == NotificationType.FIXED_DUE }
 
         assertEquals("Yarın ödeme günü: Eminevim.", due.message)
+    }
+
+    @Test
+    fun cardDue_comesFromLatestReadStatement() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        val qnb = f.cards.add(Card(name = "QNB", carriedBalance = tl(0)))
+        val due = LocalDate(2025, 1, 16)
+        f.statements.add(CardStatement(cardId = qnb, readOn = LocalDate(2025, 1, 10), dueDate = due, statementBalance = tl(52_331)))
+        f.statements.add(CardStatement(cardId = qnb, readOn = LocalDate(2025, 1, 12), dueDate = due, statementBalance = tl(31_393)))
+
+        val reminders = f.plan(today).filter { it.type == NotificationType.CARD_DUE }
+
+        assertEquals(listOf(today, due), reminders.map { it.date }) // 3 gün önce ve o gün
+        val amount = MoneyFormatter.format(tl(31_393), AppLocale.TR)
+        assertTrue(amount in reminders.first().message, reminders.first().message) // en son okunan borç
+    }
+
+    @Test
+    fun cardDue_silentAfterReadingPaidStatement() = runTest {
+        val f = fixture()
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        val qnb = f.cards.add(Card(name = "QNB", carriedBalance = tl(0)))
+        f.statements.add(CardStatement(cardId = qnb, readOn = today, dueDate = LocalDate(2025, 1, 16), statementBalance = tl(0)))
+
+        assertTrue(f.plan(today).none { it.type == NotificationType.CARD_DUE })
     }
 }

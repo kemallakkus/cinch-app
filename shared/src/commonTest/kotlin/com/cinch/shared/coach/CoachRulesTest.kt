@@ -194,4 +194,19 @@ class CoachRulesTest {
         val fromTuesday = rules.planWeek(CoachInput(today = tuesday, budget = status(), expenses = expenses), CoachConfig(habitThreshold = 10))
         assertFalse(fromTuesday.any { it.type == NotificationType.HABIT_ALERT })
     }
+
+    @Test
+    fun cardDue_threeDaysBefore_andOnTheDay_unlessPaid() {
+        val dues = listOf(
+            CardDue("QNB", dueDate = LocalDate(2025, 1, 16), remaining = t(31_393), minimum = t(9_418)),
+            CardDue("Axess", dueDate = LocalDate(2025, 1, 15), remaining = t(0), minimum = null), // ödenmiş
+        )
+        val plan = rules.planWeek(CoachInput(today = today, budget = status(), cardDues = dues), CoachConfig())
+
+        val cardDue = plan.filter { it.type == NotificationType.CARD_DUE }
+        assertEquals(listOf(LocalDate(2025, 1, 13), LocalDate(2025, 1, 16)), cardDue.map { it.date })
+        assertTrue("QNB" in cardDue[0].message && "16 Ocak" in cardDue[0].message, cardDue[0].message)
+        assertTrue("asgari" in cardDue[0].message, cardDue[0].message)
+        assertTrue(cardDue.none { "Axess" in it.message })
+    }
 }

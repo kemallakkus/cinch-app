@@ -35,6 +35,8 @@ cinch-app/
 | `Reconciler` | Elle girilen güncel borç ile kayıt farkını bulur ("103 ₺ yazmayı unutmuşsun") | `reconcile/` |
 | `CoachRules` | 7 günün yerel bildirimlerini üretir; sessiz saat + günde max 2 + cümle varyasyonu | `coach/` |
 | `ReceiptParser` / `OcrLayout` | Fişten/faturadan okunan yazıdan tutar ("TOPLAM", "Ödenecek tutar"), tarih, son ödeme tarihi, mağaza adı, kategori ve kartla ödendi ipucu. `OcrLayout` sütunlara bölünmüş satırları ("TOPLAM" … "*96,15") görüntüdeki hizalarına göre birleştirir | `receipt/` |
+| `StatementReader` | Banka uygulamasındaki kart ekranının **fotoğraflarından** (uygulamalar ekran görüntüsünü engeller; başka telefonla çekilir) ekstre okur: kalan ekstre borcu, asgari, son ödeme ve kesim tarihleri, dönem içi harcama, gelecek taksitler, limit, son 4 hane, hareketler (taksit, ödeme). Bankaya özel şablon yok: ortak etiket sözlüğü + değeri etiketin kendi satırında, sağında ya da altında (aynı sütun) arama. İki sayı biçimi ("52.331,00" / "52,331.00"), yılsız tarihler ("6 Ekim", "26 EYL") | `statement/` |
+| `OcrScan` / `OcrCodec` | Okunan satırlar konumlarıyla; rotada taşınmak için düz metne çevrilir (fotoğraf saklanmaz) | `receipt/` |
 | `BillMatcher` | Abonelik faturasını sabit gidere eşler: ad faturada geçiyorsa ya da kurum adı hizmeti ele veriyorsa ("Enerjisa" → Elektrik, "İGDAŞ" → Doğalgaz) | `receipt/` |
 | `SpendingBreakdowns` | "Nereye gitti?": ayın serbest harcamalarının kategori dağılımı, geçen ayla kıyas, en çok para giden kelimeler | `budget/SpendingBreakdown.kt` |
 
@@ -49,6 +51,7 @@ cinch-app/
 | `ObserveMonthSummary` | Bu ayın özeti: gelir − sabit giderler − serbest harcamalar; sabit giderlerin ödendi/bekliyor durumu; sonraki gelir günü | `budget/` |
 | `ObserveSpendingBreakdown` | Bir ayın `SpendingBreakdown`ını izler. İçinde bulunulan ay geçen ayın **aynı günleriyle** (1–20 Ekim ↔ 1–20 Eylül), biten ay geçen ayın tamamıyla kıyaslanır; sabit gider ödemeleri hariç | `budget/SpendingBreakdown.kt` |
 | `FixedPayments` / `WeeklyLimitSuggestion` | Sabit gideri "ödendi" işaretleme (bağlı harcama kaydı) ve gelirden haftalık sınır önerisi | `budget/FixedPayments.kt` |
+| `CardStatementRepository` | Okunan ekstreler; her okuma ayrı kayıt (ödeme ilerlemesi: "52.331 → 31.393") | `domain/repository/`, `data/SqlCardStatementRepository.kt` |
 | `PlanCoachWeek` | Bütçe, son 30 gün, kart hesap kesim günleri ve en büyük gelirin gününden `CoachRules` planını üretir | `coach/` |
 | `DataModule` / `DomainModule` / `PlatformModule` | Koin modülleri (annotation, `@Configuration`) | `di/` |
 
@@ -59,7 +62,7 @@ Eksik bağımlılık derleme anında hata verir (compile safety).
 
 **Şema sürümleri:** `Cinch.sq` güncel şemadır; her değişiklik ayrıca `<eski sürüm>.sqm` dosyasına migration
 olarak yazılır (`1.sqm`: gelir tablosu, bütçedeki maaş günü "Maaş" gelirine taşınır; `2.sqm`: sabit gider
-tablosu ve harcamaya `fixed_expense_id`; `3.sqm`: sabit giderlere ödeme şekli, taksit ve borç alanları). Telefondaki eski
+tablosu ve harcamaya `fixed_expense_id`; `3.sqm`: sabit giderlere ödeme şekli, taksit ve borç alanları; `4.sqm`: kartlara son 4 hane, okunan ekstreler tablosu). Telefondaki eski
 kurulum açılışta veri kaybetmeden yükseltilir; `MigrationTest` bunu doğrular. Yeni şema değişikliğinde
 bir sonraki `<n>.sqm` eklenir, `Cinch.sq` güncellenir.
 
@@ -74,6 +77,9 @@ Taksit sayısı ve kalan borç saklanmaz, geçmiş ödemelerden hesaplanır (`De
 ay hesabına ve hatırlatmalara girmez, "Biten borçlar"a geçer. Esnek borçta bitiş tahmini "genelde ödediğim"
 tutarla, o yoksa son 3 ödemenin ortalamasıyla yapılır. Koç ödeme gününden bir gün önce (19:00) ve o gün
 akşam hâlâ işaretlenmemişse (20:30) hatırlatır.
+
+**Kart son ödemesi:** okunan son ekstrenin son ödeme tarihinden 3 gün önce 10:00'da ve o gün 09:30'da, kalan borç ve
+asgariyle hatırlatılır. Borç sıfır okunduysa (ödenmiş) hatırlatılmaz; ödedikten sonra ekranı yeniden okutmak yeter.
 
 **Kategori uyarısı:** haftanın 5. günü (pazartesi başlayan haftada cuma) 17:30'da, bu hafta bir kategoriye geçen
 haftanın aynı günlerinden en az %30 ve haftalık sınırın en az %10'u kadar fazla gidildiyse koç söyler ("Bu hafta
@@ -96,7 +102,8 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 | Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu | `ui/settings/` |
 | Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori/tarih önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir. Tarih "dün", "cuma" yazınca değişir; 📅 çipinden takvimle de seçilir | `ui/home/QuickEntryBar.kt` |
 | Kartlar | Kart listesi; ekleme/düzenleme (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz), silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
-| Kart detayı | Bu ekstreye girecek harcamalar; "bankayla karşılaştır" (eksik farkı tek dokunuşla ekleme); eski borcun aylık ödemeyle ne zaman biteceği ve toplam faizi | `ui/cards/CardDetail*` |
+| Ekstre okuma | Kart detayında "🖼️ Fotoğraf seç" / "📷 Tara" ya da Kartlar'daki "📸 Ekstre oku": banka uygulamasındaki kart ekranının fotoğrafları (en fazla 6; özet, "daha fazla", hareketler). Onay ekranında kart (son 4 haneden kendiliğinden), son ödeme, kalan borç, asgari, kesim tarihi; bankadaki hareketler bu kartın kayıtlarıyla eşlenir: eşleşen ✅, eksik ➕ (seçili gelir, kaydedince eklenir), taksit 🔁 (seçilmeden), ödeme 💸 | `ui/statement/` |
+| Kart detayı | Okunan son ekstre: son ödeme ve kalan gün, kalan borç ve ödeme ilerlemesi, "yalnız asgariyi ödersen ~X faiz", limit doluluğu / aşımı, gelecek taksitler, bankanın dönem içi tutarı. Bu ekstreye girecek harcamalar; "bankayla karşılaştır" (eksik farkı tek dokunuşla ekleme); eski borcun aylık ödemeyle ne zaman biteceği ve toplam faizi | `ui/cards/CardDetail*` |
 
 **Görünüm (sıcak ve oyunsu):** krem zemin, mercan/şeftali vurgular; nane yeşili "iyi gidiyorsun", bal sarısı
 "dikkat". Büyük yuvarlak köşeler, her kategoriye kendi pastel rengi, ana rakamlar degrade kartlarda ve değişince

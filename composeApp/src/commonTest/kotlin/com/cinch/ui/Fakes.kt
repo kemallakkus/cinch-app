@@ -5,6 +5,8 @@ import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardStatement
+import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Income
 import com.cinch.shared.domain.repository.FixedExpenseRepository
@@ -107,6 +109,23 @@ class FakeCardRepository(private val expenses: FakeExpenseRepository? = null) : 
     override suspend fun delete(id: Long) {
         all.update { list -> list.filterNot { it.id == id } }
         expenses?.all?.update { list -> list.map { if (it.cardId == id) it.copy(cardId = null) else it } }
+    }
+}
+
+class FakeCardStatementRepository : CardStatementRepository {
+    val all = MutableStateFlow<List<CardStatement>>(emptyList())
+    private var nextId = 1L
+
+    override fun observeForCard(cardId: Long): Flow<List<CardStatement>> =
+        all.map { list -> list.filter { it.cardId == cardId }.sortedWith(compareByDescending<CardStatement> { it.readOn }.thenByDescending { it.id }) }
+
+    override suspend fun latestPerCard(): List<CardStatement> =
+        all.value.sortedWith(compareByDescending<CardStatement> { it.readOn }.thenByDescending { it.id }).distinctBy { it.cardId }
+
+    override suspend fun add(statement: CardStatement): Long {
+        val id = nextId++
+        all.update { it + statement.copy(id = id) }
+        return id
     }
 }
 

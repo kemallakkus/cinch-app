@@ -25,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,6 +67,9 @@ fun CardDetailScreen(
     onEvent: (CardDetailEvent) -> Unit,
     onBack: () -> Unit,
     onEdit: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onScanStatement: (() -> Unit)? = null,
+    onPickStatement: (() -> Unit)? = null,
 ) {
     val card = state.card
     // Bankayla tuttuğunda (ya da eksik fark eklenip tutunca) küçük bir kutlama.
@@ -81,6 +86,7 @@ fun CardDetailScreen(
                     actions = { if (card != null) TextButton(onClick = onEdit) { Text("Düzenle") } },
                 )
             },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
             when {
                 state.isLoading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -95,6 +101,7 @@ fun CardDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item(key = "tile") { CardTile(card) }
+                    item(key = "statement") { StatementCard(card, state, onScan = onScanStatement, onPick = onPickStatement) }
                     item(key = "period") { PeriodCard(card, state) }
                     item(key = "reconcile") { ReconcileSection(state, onEvent) }
                     item(key = "payoff") { PayoffSection(card, state) }

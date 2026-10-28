@@ -37,4 +37,5 @@ val NotificationType.title: String
         NotificationType.FIXED_DUE -> "Yarın ödeme günü"
         NotificationType.FIXED_UNPAID -> "Ödendi mi?"
         NotificationType.CATEGORY_SPIKE -> "Bu hafta nereye gitti?"
+        NotificationType.CARD_DUE -> "Kart son ödeme"
     }

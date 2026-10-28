@@ -26,7 +26,7 @@ fun HomeWrapper(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val receipt = rememberReceiptFlow(snackbarHostState, onRead = onReceiptRead)
+    val receipt = rememberReceiptFlow(snackbarHostState) { scan -> onReceiptRead(scan.text) }
     var confetti by remember { mutableIntStateOf(0) }
 
     LifecycleResumeEffect(viewModel) {

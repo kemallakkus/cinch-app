@@ -18,9 +18,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,13 +36,31 @@ import com.cinch.ui.common.display
 import com.cinch.ui.common.formatPercent
 import com.cinch.ui.theme.CinchTheme
 
+/**
+ * @param onPickStatement banka ekranı fotoğraflarını seç (kart, fotoğraftaki son 4 haneden bulunur); platformda
+ *   okuma yoksa null.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CardsScreen(state: CardsState, onAdd: () -> Unit, onOpen: (Long) -> Unit) {
+fun CardsScreen(
+    state: CardsState,
+    onAdd: () -> Unit,
+    onOpen: (Long) -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    onPickStatement: (() -> Unit)? = null,
+) {
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Kartlar") })
+            TopAppBar(
+                title = { Text("Kartlar") },
+                actions = {
+                    if (onPickStatement != null && state.cards.isNotEmpty()) {
+                        TextButton(onClick = onPickStatement) { Text("📸 Ekstre oku") }
+                    }
+                },
+            )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(onClick = onAdd) { Text("Kart ekle") }
         },
@@ -89,7 +111,11 @@ fun CardTile(card: Card, modifier: Modifier = Modifier, onClick: (() -> Unit)? =
             .padding(20.dp),
     ) {
         Column(Modifier.align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(card.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text(
+                card.name + (card.last4?.let { "  •••• $it" } ?: ""),
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+            )
             Text(
                 card.statementDay?.let { "Hesap kesim: ${dayOfMonthLabel(it).lowercase()}" } ?: "Hesap kesim günü yok",
                 style = MaterialTheme.typography.bodySmall,

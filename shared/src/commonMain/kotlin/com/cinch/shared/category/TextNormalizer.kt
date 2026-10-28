@@ -12,12 +12,15 @@ object TextNormalizer {
      * Harf harf: önce Türkçe indirgeme, sonra küçültme. `String.lowercase()` "İ"yi iki karaktere ("i" +
      * birleşen nokta) çevirdiği için "MİGROS" "migros"la eşleşmezdi.
      */
-    fun normalize(input: String): String {
+    fun normalize(input: String): String = fold(input).trim()
+
+    /** [normalize] ile aynı ama kırpmaz: harf harf eşlenir, konumlar ([String.indexOf]) asıl metinle aynı kalır. */
+    fun fold(input: String): String {
         val sb = StringBuilder(input.length)
         for (ch in input) {
             sb.append(replacements[ch] ?: ch.lowercaseChar())
         }
-        return sb.toString().trim()
+        return sb.toString()
     }
 
     /** Metni kelimelere böler; noktalama atılır, sayılar korunur. */

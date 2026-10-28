@@ -66,6 +66,15 @@ data class HistoryRoute(val categoryName: String? = null, val year: Int? = null,
 @Serializable
 data class ReceiptReviewRoute(val text: String) : CinchRoute
 
+/**
+ * Banka ekranı fotoğraflarından okunan ekstrenin onayı.
+ *
+ * @param cardId kart detayından açıldıysa o kart; kart listesinden açıldıysa null (son 4 haneden bulunur).
+ * @param ocr okunan satırlar, konumlarıyla (`OcrCodec`); fotoğrafların kendisi saklanmaz.
+ */
+@Serializable
+data class StatementReviewRoute(val cardId: Long? = null, val ocr: String) : CinchRoute
+
 /** "Nereye gitti?": ayın kategori dağılımı ve geçen ayla kıyas. [year]/[month] null = bu ay. */
 @Serializable
 data class InsightsRoute(val year: Int? = null, val month: Int? = null) : CinchRoute

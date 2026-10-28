@@ -1,0 +1,22 @@
+-- Sürüm 4 → 5: banka ekranından ekstre okuma.
+-- Kartlara son 4 hane (fotoğraftaki "•••• 1243" ile eşlemek için); okunan ekstreler için yeni tablo.
+-- Mevcut kartlar ve harcamalar olduğu gibi kalır.
+
+ALTER TABLE card ADD COLUMN last4 TEXT;
+
+CREATE TABLE IF NOT EXISTS card_statement (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id INTEGER NOT NULL,
+    read_epoch_day INTEGER NOT NULL,
+    statement_epoch_day INTEGER,
+    due_epoch_day INTEGER,
+    next_statement_epoch_day INTEGER,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    statement_balance_minor INTEGER,
+    minimum_payment_minor INTEGER,
+    period_spending_minor INTEGER,
+    future_installments_minor INTEGER,
+    total_debt_minor INTEGER,
+    credit_limit_minor INTEGER,
+    available_limit_minor INTEGER
+);

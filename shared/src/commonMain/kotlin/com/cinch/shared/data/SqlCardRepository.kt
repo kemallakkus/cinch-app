@@ -45,6 +45,7 @@ class SqlCardRepository(
                     carried_balance_minor = card.carriedBalance.minor,
                     monthly_rate_percent = card.monthlyRatePercent,
                     statement_day = card.statementDay?.toLong(),
+                    last4 = card.last4,
                 )
                 queries.lastInsertedRowId().executeAsOne()
             }
@@ -57,6 +58,7 @@ class SqlCardRepository(
                 carried_balance_minor = card.carriedBalance.minor,
                 monthly_rate_percent = card.monthlyRatePercent,
                 statement_day = card.statementDay?.toLong(),
+                last4 = card.last4,
                 id = card.id,
             )
         }
@@ -66,6 +68,7 @@ class SqlCardRepository(
         withContext(ioDispatcher) {
             queries.transaction {
                 queries.detachExpensesFromCard(id)
+                queries.deleteStatementsForCard(id)
                 queries.deleteCard(id)
             }
         }

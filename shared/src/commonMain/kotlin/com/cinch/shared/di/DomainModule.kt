@@ -14,12 +14,14 @@ import com.cinch.shared.coach.CoachRules
 import com.cinch.shared.coach.PlanCoachWeek
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
+import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.domain.repository.IncomeRepository
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.shared.receipt.ReceiptParser
+import com.cinch.shared.statement.StatementReader
 import com.cinch.shared.reconcile.Reconciler
 import com.cinch.shared.time.LocalClock
 import com.cinch.shared.time.SystemLocalClock
@@ -51,6 +53,9 @@ class DomainModule {
     fun receiptParser(categorizer: Categorizer): ReceiptParser = ReceiptParser(categorizer)
 
     @Single
+    fun statementReader(): StatementReader = StatementReader()
+
+    @Single
     fun budgetEngine(): BudgetEngine = BudgetEngine()
 
     @Single
@@ -76,9 +81,10 @@ class DomainModule {
         cards: CardRepository,
         incomes: IncomeRepository,
         fixedExpenses: FixedExpenseRepository,
+        statements: CardStatementRepository,
         engine: BudgetEngine,
         rules: CoachRules,
-    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, fixedExpenses, engine, rules)
+    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, fixedExpenses, statements, engine, rules)
 
     @Factory
     fun observeMonthSummary(

@@ -94,6 +94,8 @@ class CardEditViewModel(
             carriedBalance = balance!!,
             monthlyRatePercent = rate!!,
             statementDay = current.statementDay,
+            // Formda yok; banka ekranından okununca yazılır, düzenlemede kaybolmasın.
+            last4 = existing?.last4,
         )
         _state.update { it.copy(isSaving = true) }
         viewModelScope.launch {

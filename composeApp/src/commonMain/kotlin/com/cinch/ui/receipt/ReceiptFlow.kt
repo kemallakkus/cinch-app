@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.cinch.receipt.ReceiptCapture
 import com.cinch.receipt.ReceiptCaptureResult
 import com.cinch.receipt.rememberReceiptCapture
+import com.cinch.shared.receipt.OcrScan
 import kotlinx.coroutines.launch
 
 /** Fiş tarama akışı: tarayıcı/galeri, okunurken bekleme penceresi, hata mesajı. Ana ekran ve "Bu ay" kullanır. */
@@ -39,18 +40,23 @@ class ReceiptFlow internal constructor(
 }
 
 /**
- * @param onRead okunan yazı; çağıran onay ekranına geçer.
+ * @param maxImages birden çok fotoğraf (banka ekranı); fiş için 1.
+ * @param onRead okunanlar; çağıran onay ekranına geçer.
  * @param snackbarHostState hata mesajları burada gösterilir ("Fotoğrafta yazı bulamadık").
  */
 @Composable
-fun rememberReceiptFlow(snackbarHostState: SnackbarHostState, onRead: (String) -> Unit): ReceiptFlow {
+fun rememberReceiptFlow(
+    snackbarHostState: SnackbarHostState,
+    maxImages: Int = 1,
+    onRead: (OcrScan) -> Unit,
+): ReceiptFlow {
     val scope = rememberCoroutineScope()
     val currentOnRead by rememberUpdatedState(onRead)
     val reading = remember { mutableStateOf(false) }
-    val capture = rememberReceiptCapture { result ->
+    val capture = rememberReceiptCapture(maxImages) { result ->
         reading.value = result == ReceiptCaptureResult.Reading
         when (result) {
-            is ReceiptCaptureResult.Read -> currentOnRead(result.text)
+            is ReceiptCaptureResult.Read -> currentOnRead(result.scan)
             is ReceiptCaptureResult.Failed -> scope.launch { snackbarHostState.showSnackbar(result.message) }
             ReceiptCaptureResult.Reading, ReceiptCaptureResult.Cancelled -> Unit
         }
@@ -60,12 +66,12 @@ fun rememberReceiptFlow(snackbarHostState: SnackbarHostState, onRead: (String) -
 
 /** Okuma birkaç saniye sürer; bu sırada kapatılamayan küçük bir bekleme penceresi. */
 @Composable
-fun ReceiptReadingDialog(flow: ReceiptFlow) {
+fun ReceiptReadingDialog(flow: ReceiptFlow, title: String = "Fiş okunuyor…") {
     if (!flow.isReading) return
     AlertDialog(
         onDismissRequest = {},
         confirmButton = {},
-        title = { Text("Fiş okunuyor…") },
+        title = { Text(title) },
         text = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 CircularProgressIndicator(Modifier.size(28.dp))

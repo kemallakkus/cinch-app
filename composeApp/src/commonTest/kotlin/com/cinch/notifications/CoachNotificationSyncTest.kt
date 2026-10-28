@@ -12,6 +12,7 @@ import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.ui.FakeBudgetRepository
 import com.cinch.ui.FakeCardRepository
+import com.cinch.ui.FakeCardStatementRepository
 import com.cinch.ui.FakeClock
 import com.cinch.ui.FakeExpenseRepository
 import com.cinch.ui.FakeFixedExpenseRepository
@@ -69,7 +70,8 @@ class CoachNotificationSyncTest {
         val cards = FakeCardRepository()
         val clock = FakeClock(wednesday, LocalTime(12, 0))
         val plan = PlanCoachWeek(
-            budgets, expenses, cards, FakeIncomeRepository(), FakeFixedExpenseRepository(), BudgetEngine(), CoachRules(),
+            budgets, expenses, cards, FakeIncomeRepository(), FakeFixedExpenseRepository(), FakeCardStatementRepository(),
+            BudgetEngine(), CoachRules(),
         )
         val scheduler = FakeScheduler()
         val sync = CoachNotificationSync(

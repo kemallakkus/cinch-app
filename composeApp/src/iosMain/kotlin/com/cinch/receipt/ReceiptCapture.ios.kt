@@ -9,7 +9,7 @@ import androidx.compose.runtime.remember
  * kadar fiş düğmeleri gizlenir.
  */
 @Composable
-actual fun rememberReceiptCapture(onResult: (ReceiptCaptureResult) -> Unit): ReceiptCapture = remember {
+actual fun rememberReceiptCapture(maxImages: Int, onResult: (ReceiptCaptureResult) -> Unit): ReceiptCapture = remember {
     object : ReceiptCapture {
         override val isSupported: Boolean = false
         override fun scan() = Unit

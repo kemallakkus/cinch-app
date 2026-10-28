@@ -14,6 +14,7 @@ import kotlinx.datetime.minus
  * @param carriedBalance taşınan (önceki dönemden kalan) borç.
  * @param monthlyRatePercent aylık faiz + vergi oranı (ör. 4.9).
  * @param statementDay ekstre kesim günü (1–31); ay o kadar uzun değilse ayın son günü sayılır.
+ * @param last4 kart numarasının son 4 hanesi; banka ekranı fotoğrafındaki "•••• 1243" ile eşlemek için.
  */
 data class Card(
     val id: Long = 0,
@@ -21,6 +22,7 @@ data class Card(
     val carriedBalance: Money,
     val monthlyRatePercent: Double = 4.9,
     val statementDay: Int? = null,
+    val last4: String? = null,
 ) {
     val currency: Currency get() = carriedBalance.currency
 

@@ -28,7 +28,7 @@ fun MonthWrapper(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confetti by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val receipt = rememberReceiptFlow(snackbarHostState, onRead = onReceiptRead)
+    val receipt = rememberReceiptFlow(snackbarHostState) { scan -> onReceiptRead(scan.text) }
 
     LifecycleResumeEffect(viewModel) {
         viewModel.onEvent(MonthEvent.Resumed)

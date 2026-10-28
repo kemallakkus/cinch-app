@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
 import com.cinch.shared.debt.CardPayoffResult
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardStatement
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Money
 import com.cinch.shared.reconcile.ReconciliationResult
@@ -16,6 +17,8 @@ import kotlinx.datetime.LocalDate
  * @param payoff yazılan aylık ödemeyle devreden borcun kapanışı; ödeme okunamıyorsa null.
  * @param firstMonthInterest devreden borcun ilk ay faizi: ödeme bunu geçmezse borç hiç kapanmaz.
  * @param reconciliation "Karşılaştır"a basılınca hesaplanır; kayıtlar değişince kendiliğinden güncellenir.
+ * @param statement banka ekranından okunan son ekstre; hiç okunmadıysa null.
+ * @param statementStartBalance aynı ekstrenin (aynı son ödeme tarihi) ilk okunan borcu: ödedikçe azalır.
  */
 @Immutable
 data class CardDetailState(
@@ -31,7 +34,18 @@ data class CardDetailState(
     val statedSpending: TextFieldState = TextFieldState(),
     val statedSpendingError: Boolean = false,
     val reconciliation: ReconciliationResult? = null,
-)
+    val statement: CardStatement? = null,
+    val statementStartBalance: Money? = null,
+) {
+    /** Bu ekstreye ilk okumadan bu yana ödenen ("52.331 → 31.393": 20.938 ₺). */
+    val statementPaid: Money?
+        get() {
+            val start = statementStartBalance ?: return null
+            val now = statement?.statementBalance ?: return null
+            if (start.currency != now.currency) return null
+            return (start - now).takeIf { !it.isNegative && !it.isZero }
+        }
+}
 
 sealed interface CardDetailEvent {
     /** Yazılan banka tutarını kayıtlarla karşılaştır. */

@@ -2,6 +2,7 @@ package com.cinch.shared.data
 
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardStatement
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.FixedExpense
@@ -15,6 +16,7 @@ import kotlinx.datetime.LocalDate
 import com.cinch.shared.db.AllFixedPayments
 import com.cinch.shared.db.Budget_config as BudgetRow
 import com.cinch.shared.db.Card as CardRow
+import com.cinch.shared.db.Card_statement as StatementRow
 import com.cinch.shared.db.Expense as ExpenseRow
 import com.cinch.shared.db.Fixed_expense as FixedRow
 import com.cinch.shared.db.Income as IncomeRow
@@ -81,7 +83,28 @@ internal fun CardRow.toDomain(): Card = Card(
     carriedBalance = Money(carried_balance_minor, Currency.fromCode(currency)),
     monthlyRatePercent = monthly_rate_percent,
     statementDay = statement_day?.toInt(),
+    last4 = last4,
 )
+
+internal fun StatementRow.toDomain(): CardStatement {
+    val currency = Currency.fromCode(currency)
+    fun money(minor: Long?) = minor?.let { Money(it, currency) }
+    return CardStatement(
+        id = id,
+        cardId = card_id,
+        readOn = LocalDate.fromEpochDays(read_epoch_day),
+        statementDate = statement_epoch_day?.let { LocalDate.fromEpochDays(it) },
+        dueDate = due_epoch_day?.let { LocalDate.fromEpochDays(it) },
+        nextStatementDate = next_statement_epoch_day?.let { LocalDate.fromEpochDays(it) },
+        statementBalance = money(statement_balance_minor),
+        minimumPayment = money(minimum_payment_minor),
+        periodSpending = money(period_spending_minor),
+        futureInstallments = money(future_installments_minor),
+        totalDebt = money(total_debt_minor),
+        creditLimit = money(credit_limit_minor),
+        availableLimit = money(available_limit_minor),
+    )
+}
 
 internal fun BudgetRow.toDomain(): BudgetConfig {
     val currency = Currency.fromCode(currency)

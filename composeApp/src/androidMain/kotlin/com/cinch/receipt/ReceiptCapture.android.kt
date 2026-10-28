@@ -16,7 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
-import com.cinch.shared.receipt.OcrLayout
+import com.cinch.shared.receipt.OcrScan
 import com.cinch.shared.receipt.OcrLine
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
@@ -38,46 +38,55 @@ import kotlin.coroutines.resumeWithException
  * seçicisi (izin istemez). Okuma: uygulamaya gömülü ML Kit metin tanıma, internetsiz çalışır.
  */
 @Composable
-actual fun rememberReceiptCapture(onResult: (ReceiptCaptureResult) -> Unit): ReceiptCapture {
+actual fun rememberReceiptCapture(maxImages: Int, onResult: (ReceiptCaptureResult) -> Unit): ReceiptCapture {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentOnResult by rememberUpdatedState(onResult)
+    val pageLimit = maxImages.coerceIn(1, MAX_PAGES)
 
-    val read: (Uri) -> Unit = remember(context, scope) {
-        { uri ->
-            currentOnResult(ReceiptCaptureResult.Reading)
-            scope.launch {
-                val result = try {
-                    val text = ReceiptTextReader.read(context, uri)
-                    if (text.isBlank()) {
-                        ReceiptCaptureResult.Failed("Fotoğrafta yazı bulamadık. Fişi düz ve aydınlık bir yerde tekrar dene.")
-                    } else {
-                        ReceiptCaptureResult.Read(text)
+    val read: (List<Uri>) -> Unit = remember(context, scope) {
+        { uris ->
+            if (uris.isEmpty()) {
+                currentOnResult(ReceiptCaptureResult.Cancelled)
+            } else {
+                currentOnResult(ReceiptCaptureResult.Reading)
+                scope.launch {
+                    val result = try {
+                        val scan = OcrScan(uris.map { ReceiptTextReader.read(context, it) })
+                        if (scan.isBlank) {
+                            ReceiptCaptureResult.Failed("Fotoğrafta yazı bulamadık. Düz ve aydınlık bir açıyla tekrar dene.")
+                        } else {
+                            ReceiptCaptureResult.Read(scan)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        ReceiptCaptureResult.Failed("Fotoğraf okunamadı. Bir daha dener misin?")
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    ReceiptCaptureResult.Failed("Fotoğraf okunamadı. Bir daha dener misin?")
+                    currentOnResult(result)
                 }
-                currentOnResult(result)
             }
         }
     }
 
     val scanLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-        val uri = if (result.resultCode == Activity.RESULT_OK) {
-            GmsDocumentScanningResult.fromActivityResultIntent(result.data)?.pages?.firstOrNull()?.imageUri
+        val uris = if (result.resultCode == Activity.RESULT_OK) {
+            GmsDocumentScanningResult.fromActivityResultIntent(result.data)?.pages?.map { it.imageUri }.orEmpty()
         } else {
-            null
+            emptyList()
         }
-        if (uri != null) read(uri) else currentOnResult(ReceiptCaptureResult.Cancelled)
+        read(uris)
     }
-    val pickLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) read(uri) else currentOnResult(ReceiptCaptureResult.Cancelled)
+    val pickOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        read(listOfNotNull(uri))
+    }
+    // Çoklu seçici en az 2 ister; tek fotoğraflık akışta tekli seçici kullanılır.
+    val pickMany = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, pageLimit))) { uris ->
+        read(uris)
     }
     val activity = remember(context) { context.findActivity() }
 
-    return remember(activity, scanLauncher, pickLauncher) {
+    return remember(activity, scanLauncher, pickOne, pickMany, pageLimit) {
         object : ReceiptCapture {
             override val isSupported: Boolean = true
 
@@ -85,7 +94,7 @@ actual fun rememberReceiptCapture(onResult: (ReceiptCaptureResult) -> Unit): Rec
                 val host = activity ?: return currentOnResult(ReceiptCaptureResult.Failed(SCANNER_UNAVAILABLE))
                 val options = GmsDocumentScannerOptions.Builder()
                     .setGalleryImportAllowed(true)
-                    .setPageLimit(1)
+                    .setPageLimit(pageLimit)
                     .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
                     .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
                     .build()
@@ -95,31 +104,34 @@ actual fun rememberReceiptCapture(onResult: (ReceiptCaptureResult) -> Unit): Rec
             }
 
             override fun pickFromGallery() {
-                pickLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                if (pageLimit > 1) pickMany.launch(request) else pickOne.launch(request)
             }
         }
     }
 }
 
+/** Bir seferde okunan en fazla fotoğraf (banka ekranının özeti, ayrıntısı ve birkaç hareket karesi). */
+private const val MAX_PAGES = 6
+
 private const val SCANNER_UNAVAILABLE =
     "Tarayıcı açılamadı (Google Play hizmetleri gerekiyor). Fotoğrafı galeriden seçebilirsin."
 
-/** Görüntüdeki yazıyı satır satır okur; sütunlara bölünmüş satırları [OcrLayout] birleştirir. */
+/** Görüntüdeki yazıyı satır satır, konumlarıyla okur (satır birleştirme [OcrLayout]'ta, ortak kodda). */
 private object ReceiptTextReader {
 
     /** Büyük fotoğraflar belleği taşırmasın diye uzun kenar en fazla bu kadar piksele küçültülür. */
     private const val MAX_SIDE = 3000
 
-    suspend fun read(context: Context, uri: Uri): String {
+    suspend fun read(context: Context, uri: Uri): List<OcrLine> {
         val image = withContext(Dispatchers.Default) { loadImage(context, uri) }
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         try {
             val text = recognizer.process(image).await()
-            val lines = text.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+            return text.textBlocks.flatMap { it.lines }.mapNotNull { line ->
                 val box = line.boundingBox ?: return@mapNotNull null
                 OcrLine(line.text, box.left.toFloat(), box.top.toFloat(), box.right.toFloat(), box.bottom.toFloat())
             }
-            return OcrLayout.rows(lines).joinToString("\n")
         } finally {
             recognizer.close()
         }

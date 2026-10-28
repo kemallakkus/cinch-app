@@ -18,9 +18,9 @@ interface CardRepository {
     /** Kartı ekler ve yeni kaydın id'sini döner. [Card.id] yok sayılır. */
     suspend fun add(card: Card): Long
 
-    /** [Card.id]'li kartın adını, borcunu, oranını ve ekstre gününü günceller. Para birimi değişmez. */
+    /** [Card.id]'li kartın adını, borcunu, oranını, ekstre gününü ve son 4 hanesini günceller. Para birimi değişmez. */
     suspend fun update(card: Card)
 
-    /** Kartı siler; ona bağlı harcamalar kalır ve nakit sayılır. */
+    /** Kartı siler; ona bağlı harcamalar kalır ve nakit sayılır, okunan ekstreleri silinir. */
     suspend fun delete(id: Long)
 }

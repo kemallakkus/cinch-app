@@ -27,6 +27,7 @@ enum class NotificationType {
     FIXED_DUE,          // yarın sabit gider ödeme günü
     FIXED_UNPAID,       // bugün ödeme günü, henüz "ödendi" işaretlenmedi
     CATEGORY_SPIKE,     // bu hafta bir kategoriye geçen haftadan belirgin fazla gitti
+    CARD_DUE,           // kredi kartı son ödeme günü yaklaşıyor (banka ekranından okunan)
 }
 
 /**
@@ -79,7 +80,14 @@ data class CoachInput(
     val statementDates: List<LocalDate> = emptyList(),
     val salaryDates: List<LocalDate> = emptyList(),
     val fixedDues: List<FixedDue> = emptyList(),
+    val cardDues: List<CardDue> = emptyList(),
 )
+
+/**
+ * Banka ekranından okunan kart son ödemesi. [remaining] okunduğu andaki kalan ekstre borcu; null = okunamadı
+ * (mesajda tutar yazılmaz), sıfır = ödenmiş (hatırlatılmaz).
+ */
+data class CardDue(val cardName: String, val dueDate: LocalDate, val remaining: Money?, val minimum: Money?)
 
 /**
  * Ufuktaki bir sabit gider ödeme günü. [paid] = o ayın ödemesi zaten işaretlendi.
@@ -111,6 +119,7 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(fixedDue(input, config))
             addAll(fixedUnpaid(input, config))
             addAll(categorySpike(input, config))
+            addAll(cardDue(input, config))
         }
 
     private fun horizon(today: LocalDate): List<LocalDate> =
@@ -337,6 +346,42 @@ class CoachRules(private val horizonDays: Int = 7) {
         return listOf(CoachNotification(input.today, LocalTime(17, 30), NotificationType.CATEGORY_SPIKE, 72, msg))
     }
 
+    /**
+     * Kart son ödemesi: 3 gün önce 10:00'da ve o gün 09:30'da. Gecikme faizi ve kredi notu için önemli olduğundan
+     * önceliği yüksek. Okunan borç sıfırsa (ödenmiş) hatırlatılmaz; kullanıcı ödedikten sonra ekranı yeniden
+     * okutursa hatırlatma kalkar.
+     */
+    private fun cardDue(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val horizonSet = horizon(input.today).toSet()
+        return input.cardDues
+            .filter { due -> due.remaining?.let { it.isZero || it.isNegative } != true }
+            .flatMap { due ->
+                val amount = due.remaining?.let { MoneyFormatter.format(it, config.locale) }
+                val minimum = due.minimum?.let { MoneyFormatter.format(it, config.locale) }
+                val dayText = "${due.dueDate.day} ${MONTHS_TR[due.dueDate.month.ordinal]}"
+                buildList {
+                    val early = due.dueDate.minusDays(CARD_DUE_EARLY_DAYS)
+                    if (early in horizonSet) {
+                        val msg = when (config.locale) {
+                            AppLocale.TR -> "${due.cardName} kartının son ödemesi $CARD_DUE_EARLY_DAYS gün sonra ($dayText)" +
+                                (amount?.let { ": kalan $it" } ?: ".") + (minimum?.let { " · asgari $it" } ?: "")
+                            AppLocale.EN -> "${due.cardName} card payment is due in $CARD_DUE_EARLY_DAYS days" +
+                                (amount?.let { ": $it left" } ?: ".") + (minimum?.let { " · minimum $it" } ?: "")
+                        }
+                        add(CoachNotification(early, LocalTime(10, 0), NotificationType.CARD_DUE, 88, msg))
+                    }
+                    if (due.dueDate in horizonSet) {
+                        val msg = when (config.locale) {
+                            AppLocale.TR -> "Bugün ${due.cardName} kartının son ödeme günü" +
+                                (amount?.let { ": kalan $it." } ?: ".") + " Ödediysen ekranı yeniden okut, hatırlatma kalksın."
+                            AppLocale.EN -> "${due.cardName} card payment is due today" + (amount?.let { ": $it left." } ?: ".")
+                        }
+                        add(CoachNotification(due.dueDate, LocalTime(9, 30), NotificationType.CARD_DUE, 88, msg))
+                    }
+                }
+            }
+    }
+
     // ───────────────────────── Kısıtlar ─────────────────────────
 
     internal fun applyConstraints(
@@ -381,6 +426,13 @@ class CoachRules(private val horizonDays: Int = 7) {
 
         /** Alışkanlık uyarısının günü: hafta başından 2 gün sonra (3. gün). */
         const val HABIT_DAY_OFFSET = 2
+
+        /** Kart son ödemesi kaç gün önceden hatırlatılır. */
+        const val CARD_DUE_EARLY_DAYS = 3
+
+        val MONTHS_TR = listOf(
+            "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+        )
     }
 }
 

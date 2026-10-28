@@ -53,6 +53,7 @@ import com.cinch.ui.month.IncomeEditWrapper
 import com.cinch.ui.month.MonthWrapper
 import com.cinch.ui.receipt.ReceiptReviewWrapper
 import com.cinch.ui.settings.SettingsWrapper
+import com.cinch.ui.statement.StatementReviewWrapper
 import kotlinx.datetime.number
 
 /** Alt menünün sekmeleri; her biri kendi geri yığınının köküdür. */
@@ -228,10 +229,19 @@ private fun cinchEntries(
         CardsWrapper(
             onAdd = { navigate(CardEditRoute()) },
             onOpen = { id -> navigate(CardDetailRoute(id)) },
+            onStatementRead = { ocr -> navigate(StatementReviewRoute(cardId = null, ocr = ocr)) },
         )
     }
     entry<CardDetailRoute> { route ->
-        CardDetailWrapper(route = route, onBack = goBack, onEdit = { navigate(CardEditRoute(route.cardId)) })
+        CardDetailWrapper(
+            route = route,
+            onBack = goBack,
+            onEdit = { navigate(CardEditRoute(route.cardId)) },
+            onStatementRead = { ocr -> navigate(StatementReviewRoute(cardId = route.cardId, ocr = ocr)) },
+        )
+    }
+    entry<StatementReviewRoute> { route ->
+        StatementReviewWrapper(route = route, onDone = goBack, onBack = goBack)
     }
     entry<CardEditRoute> { route ->
         CardEditWrapper(route = route, onDone = goBack, onDeleted = removeCardScreens, onBack = goBack)

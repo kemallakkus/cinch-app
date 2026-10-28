@@ -9,6 +9,7 @@ import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.domain.repository.CardRepository
+import com.cinch.shared.domain.repository.CardStatementRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -38,6 +39,7 @@ class CardDetailViewModel(
     private val route: CardDetailRoute,
     cards: CardRepository,
     private val expenses: ExpenseRepository,
+    statements: CardStatementRepository,
     private val reconciler: Reconciler,
     private val simulator: PayoffSimulator,
     private val clock: LocalClock,
@@ -65,10 +67,17 @@ class CardDetailViewModel(
         cardWithExpenses,
         paymentMinor,
         statedMinor,
-    ) { current, (card, list), payment, stated ->
+        statements.observeForCard(route.cardId),
+    ) { current, (card, list), payment, stated, readings ->
         if (card == null) return@combine current.copy(isLoading = false, card = null)
         val inCurrency = list.filter { it.grossAmount.currency == card.currency }
+        val latest = readings.firstOrNull()
         current.copy(
+            statement = latest,
+            // Aynı ekstrenin okumaları: borç ödendikçe azalır, en yüksek okuma başlangıçtır.
+            statementStartBalance = latest?.dueDate?.let { due ->
+                readings.filter { it.dueDate == due }.mapNotNull { it.statementBalance }.maxOrNull()
+            },
             isLoading = false,
             card = card,
             period = card.currentPeriod(today),

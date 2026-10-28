@@ -7,12 +7,14 @@ import androidx.lifecycle.viewModelScope
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.Card
+import com.cinch.shared.domain.CardStatement
 import com.cinch.shared.domain.Expense
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.reconcile.ReconciliationKind
 import com.cinch.shared.reconcile.Reconciler
 import com.cinch.ui.FakeCardRepository
+import com.cinch.ui.FakeCardStatementRepository
 import com.cinch.ui.FakeClock
 import com.cinch.ui.FakeExpenseRepository
 import com.cinch.ui.withTestMain
@@ -36,7 +38,12 @@ class CardDetailViewModelTest {
     private val today = LocalDate(2025, 2, 3)
     private fun tl(units: Long) = Money.of(units, Currency.TRY)
 
-    private class Fixture(val vm: CardDetailViewModel, val expenses: FakeExpenseRepository, val cardId: Long) {
+    private class Fixture(
+        val vm: CardDetailViewModel,
+        val expenses: FakeExpenseRepository,
+        val statements: FakeCardStatementRepository,
+        val cardId: Long,
+    ) {
         val state get() = vm.state.value
     }
 
@@ -48,17 +55,19 @@ class CardDetailViewModelTest {
             val expenses = FakeExpenseRepository()
             val cards = FakeCardRepository(expenses)
             val id = cards.add(card)
+            val statements = FakeCardStatementRepository()
             val vm = CardDetailViewModel(
                 route = CardDetailRoute(id),
                 cards = cards,
                 expenses = expenses,
+                statements = statements,
                 reconciler = Reconciler(),
                 simulator = PayoffSimulator(),
                 clock = FakeClock(today),
             )
             backgroundScope.launch { vm.state.collect {} }
             runCurrent()
-            block(Fixture(vm, expenses, id))
+            block(Fixture(vm, expenses, statements, id))
             vm.viewModelScope.cancel()
         }
     }
@@ -149,5 +158,19 @@ class CardDetailViewModelTest {
         type(f.state.statedSpending, "10")
         assertNull(f.state.reconciliation)
         assertFalse(f.state.statedSpendingError)
+    }
+
+    @Test
+    fun statement_latestReading_andPaymentProgressForSameDueDate() = testVm { f ->
+        assertNull(f.state.statement)
+        val due = LocalDate(2025, 2, 6)
+        f.statements.add(CardStatement(cardId = f.cardId, readOn = LocalDate(2025, 2, 1), dueDate = due, statementBalance = tl(52_331)))
+        f.statements.add(CardStatement(cardId = f.cardId, readOn = LocalDate(2025, 2, 3), dueDate = due, statementBalance = tl(31_393)))
+        runCurrent()
+
+        assertEquals(tl(31_393), f.state.statement?.statementBalance)
+        assertEquals(tl(52_331), f.state.statementStartBalance)
+        assertEquals(tl(20_938), f.state.statementPaid) // 52.331 → 31.393
+        assertEquals(3, f.state.statement?.daysUntilDue(today))
     }
 }
