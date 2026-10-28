@@ -114,6 +114,12 @@ Navigation 3 (sekme başına geri yığını, `navigation/CinchNavHost.kt`); her
 Eşitleme farka göre yapılır: plandan düşen iptal edilir, eksik eklenir, aynısı kalana dokunulmaz.
 Plan şu durumlarda yeniden kurulur: Koin açılışı, bütçe/kart/harcama değişikliği ve uygulamanın öne gelmesi.
 
+Bazı bildirimler önceden planlanır (`leadDays`): "dün kayıt yoktu", "sınıra yaklaşıyorsun" ve seri bir gün sonra,
+alışkanlık uyarısı iki gün sonra (haftada bir, haftanın 3. günü). Plan her gün yeniden kurulduğundan
+`PlanCoachWeek`, bugüne düşenleri planlandıkları günün gözünden ama güncel veriyle yeniden kurup bugünün planına
+ekler. Böylece yeniden planlama onları ertesi güne itmez, Android de gösterirken bulur. Sınıra yaklaşma uyarısı
+yeni haftaya taşınmaz.
+
 | | Android | iOS |
 |---|---|---|
 | Zamanlama | Bildirim başına bir WorkManager işi (`AndroidNotificationScheduler`); yeniden başlatmadan sonra WorkManager geri kurar | `UNCalendarNotificationTrigger` (`IosNotificationScheduler`), en fazla 64 bekleyen |

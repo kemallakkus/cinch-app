@@ -29,6 +29,20 @@ enum class NotificationType {
     CATEGORY_SPIKE,     // bu hafta bir kategoriye geçen haftadan belirgin fazla gitti
 }
 
+/**
+ * Kuralın bildirimi, planın kurulduğu günden kaç gün sonraya koyduğu. "Yarın sabah sınıra yaklaşıyorsun",
+ * "dün kayıt yoktu" gibi bildirimler bir gün önceden, alışkanlık uyarısı iki gün önceden planlanır.
+ *
+ * Plan her gün yeniden kurulduğu için bu bildirimler bugünün planında "yarın"a kayar; [PlanCoachWeek] bu
+ * yüzden bugüne düşenleri, planlandıkları günün gözünden ama güncel veriyle yeniden kurup bugünün planına ekler.
+ */
+internal val NotificationType.leadDays: Int
+    get() = when (this) {
+        NotificationType.FORGOT_LOG, NotificationType.APPROACHING_LIMIT, NotificationType.STREAK -> 1
+        NotificationType.HABIT_ALERT -> 2
+        else -> 0
+    }
+
 /** Planlanmış tek bildirim. */
 data class CoachNotification(
     val date: LocalDate,
@@ -80,8 +94,12 @@ data class FixedDue(val name: String, val amount: Money?, val date: LocalDate, v
  */
 class CoachRules(private val horizonDays: Int = 7) {
 
-    fun planWeek(input: CoachInput, config: CoachConfig): List<CoachNotification> {
-        val candidates = buildList {
+    fun planWeek(input: CoachInput, config: CoachConfig): List<CoachNotification> =
+        applyConstraints(candidates(input, config), config)
+
+    /** Kısıt uygulanmamış adaylar; [PlanCoachWeek] önceki günlerden taşınanlarla birleştirip kısıtları bir kez uygular. */
+    internal fun candidates(input: CoachInput, config: CoachConfig): List<CoachNotification> =
+        buildList {
             addAll(middayRemaining(input, config))
             addAll(approachingLimit(input, config))
             addAll(weeklyClosing(input, config))
@@ -94,8 +112,6 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(fixedUnpaid(input, config))
             addAll(categorySpike(input, config))
         }
-        return applyConstraints(candidates, config)
-    }
 
     private fun horizon(today: LocalDate): List<LocalDate> =
         (0 until horizonDays).map { today.plusDays(it) }
@@ -125,7 +141,9 @@ class CoachRules(private val horizonDays: Int = 7) {
     private fun approachingLimit(input: CoachInput, config: CoachConfig): List<CoachNotification> {
         if (input.budget.isOverLimit) return emptyList()
         if (input.budget.pacePercent < 0.8) return emptyList()
-        val date = input.today.plusDays(1)
+        val date = input.today.plusDays(NotificationType.APPROACHING_LIMIT.leadDays)
+        // Yeni hafta yeni sınırla başlar: pazar akşamki durum pazartesi sabahı söylenmez.
+        if (date > input.budget.weekEnd) return emptyList()
         val remaining = MoneyFormatter.format(input.budget.weekRemaining, config.locale)
         val msg = variant(
             config, NotificationType.APPROACHING_LIMIT, date,
@@ -163,7 +181,7 @@ class CoachRules(private val horizonDays: Int = 7) {
     private fun forgotLog(input: CoachInput, config: CoachConfig): List<CoachNotification> {
         val loggedToday = input.expenses.any { it.date == input.today }
         if (loggedToday) return emptyList()
-        val date = input.today.plusDays(1)
+        val date = input.today.plusDays(NotificationType.FORGOT_LOG.leadDays)
         val msg = variant(
             config, NotificationType.FORGOT_LOG, date,
             tr = listOf(
@@ -178,7 +196,13 @@ class CoachRules(private val horizonDays: Int = 7) {
         return listOf(CoachNotification(date, LocalTime(20, 0), NotificationType.FORGOT_LOG, 40, msg))
     }
 
+    /**
+     * Haftada bir, haftanın 3. günü (pazartesi başlayan haftada çarşamba) 18:00. Mesaj günden güne pek değişmediği
+     * için her gün söylenmez.
+     */
     private fun habitAlert(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val date = input.today.plusDays(NotificationType.HABIT_ALERT.leadDays)
+        if (date != input.budget.weekStart.plusDays(HABIT_DAY_OFFSET)) return emptyList()
         val counts = mutableMapOf<String, Int>()
         for (e in input.expenses) {
             for (tok in e.tokens) {
@@ -188,7 +212,6 @@ class CoachRules(private val horizonDays: Int = 7) {
         }
         val top = counts.maxByOrNull { it.value } ?: return emptyList()
         if (top.value < config.habitThreshold) return emptyList()
-        val date = input.today.plusDays(2)
         val word = top.key
         val n = top.value
         val msg = when (config.locale) {
@@ -207,7 +230,7 @@ class CoachRules(private val horizonDays: Int = 7) {
             d = d.minusDays(1)
         }
         if (streak < 3) return emptyList()
-        val date = input.today.plusDays(1)
+        val date = input.today.plusDays(NotificationType.STREAK.leadDays)
         val msg = when (config.locale) {
             AppLocale.TR -> "$streak gündür düzenli kayıt tutuyorsun, böyle devam!"
             AppLocale.EN -> "$streak-day logging streak — keep it up!"
@@ -355,6 +378,9 @@ class CoachRules(private val horizonDays: Int = 7) {
     private companion object {
         /** Hafta başından kaç gün sonra kategori kıyası yapılır (4 = 5. gün). */
         const val SPIKE_CHECK_OFFSET = 4
+
+        /** Alışkanlık uyarısının günü: hafta başından 2 gün sonra (3. gün). */
+        const val HABIT_DAY_OFFSET = 2
     }
 }
 

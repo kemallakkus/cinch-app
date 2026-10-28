@@ -175,4 +175,23 @@ class CoachRulesTest {
         val plan = rules.planWeek(CoachInput(today = friday, budget = status(), expenses = small), CoachConfig())
         assertFalse(plan.any { it.type == NotificationType.CATEGORY_SPIKE })
     }
+
+    @Test
+    fun approachingLimit_silentWhenTomorrowIsNewWeek() {
+        val sunday = LocalDate(2025, 1, 19) // status() haftası 13–19 Ocak
+        val plan = rules.planWeek(CoachInput(today = sunday, budget = status(pace = 0.9)), CoachConfig())
+        assertFalse(plan.any { it.type == NotificationType.APPROACHING_LIMIT })
+    }
+
+    @Test
+    fun habitAlert_isWeekly_onThirdDayOfWeek() {
+        val expenses = (1..11).map { Expense(date = today.minusDays(it % 5), grossAmount = t(20), tokens = listOf("bufe")) }
+
+        val fromMonday = rules.planWeek(CoachInput(today = today, budget = status(), expenses = expenses), CoachConfig(habitThreshold = 10))
+        assertEquals(LocalDate(2025, 1, 15), fromMonday.single { it.type == NotificationType.HABIT_ALERT }.date) // çarşamba
+
+        val tuesday = LocalDate(2025, 1, 14)
+        val fromTuesday = rules.planWeek(CoachInput(today = tuesday, budget = status(), expenses = expenses), CoachConfig(habitThreshold = 10))
+        assertFalse(fromTuesday.any { it.type == NotificationType.HABIT_ALERT })
+    }
 }

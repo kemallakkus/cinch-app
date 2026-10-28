@@ -37,37 +37,55 @@ class PlanCoachWeek(
     private val lookbackDays: Int = 30,
 ) {
 
-    /** Bütçe kurulmadıysa plan boş döner: günlük pay hesaplanamaz. */
+    /**
+     * Bütçe kurulmadıysa plan boş döner: günlük pay hesaplanamaz.
+     *
+     * Bugünün planı iki kaynaktan oluşur: bugünün verisiyle kurulan kurallar ve önceki günlerde bugüne
+     * planlanmış bildirimler ([leadDays]: "dün kayıt yoktu", "sınıra yaklaşıyorsun", seri, alışkanlık).
+     * İkinciler planlandıkları günün gözünden ama **güncel** veriyle yeniden kurulur. Böyle olmasa her
+     * yeniden planlamada bir gün ileri kayar, hiç gösterilmezlerdi; Android gösterirken de bulamazdı.
+     * Günde en fazla bildirim kısıtı ikisine birlikte uygulanır.
+     */
     suspend operator fun invoke(today: LocalDate, config: CoachConfig = CoachConfig()): List<CoachNotification> {
         val budget = budgets.get() ?: return emptyList()
+        // Haftalık kapanış günü bütçenin hafta başlangıcıyla aynı olmalı.
+        val cfg = config.copy(weekStart = budget.weekStart)
 
-        val statusRange = BudgetEngine.statusRange(today, budget.weekStart)
-        val lookbackStart = today.minusDays(lookbackDays - 1)
+        val fresh = rules.candidates(input(budget, today), cfg)
+        val carried = CARRIED_LEADS.flatMap { lead ->
+            rules.candidates(input(budget, today.minusDays(lead)), cfg)
+                .filter { it.type.leadDays == lead && it.date == today }
+        }
+        return rules.applyConstraints(fresh + carried, cfg)
+    }
+
+    /** [day] gününün gözünden kural girdisi: o güne kadarki harcamalar, o haftanın durumu. */
+    private suspend fun input(budget: BudgetConfig, day: LocalDate): CoachInput {
+        val statusRange = BudgetEngine.statusRange(day, budget.weekStart)
+        val lookbackStart = day.minusDays(lookbackDays - 1)
         val fetched = expenses.between(
             from = minOf(statusRange.start, lookbackStart),
             to = statusRange.endInclusive,
         ).inCurrencyOf(budget).discretionary()
 
-        val status = engine.status(fetched, budget, today)
+        val status = engine.status(fetched, budget, day)
         // Koç kuralları yalnız son lookbackDays günü görür: alışkanlık sayımı "bu dönem" içindir.
-        val recent = fetched.filter { it.date in lookbackStart..today }
+        val recent = fetched.filter { it.date in lookbackStart..day }
 
         // CoachRules ufkun dışına taşan tarihleri kendisi eler; bir ay ileri bakmak yeter.
-        val lookahead = today.plus(DatePeriod(months = 1))
+        val lookahead = day.plus(DatePeriod(months = 1))
         val statementDates = cards.all()
-            .flatMap { it.statementDatesBetween(today, lookahead) }
+            .flatMap { it.statementDatesBetween(day, lookahead) }
             .distinct()
 
-        val input = CoachInput(
-            today = today,
+        return CoachInput(
+            today = day,
             budget = status,
             expenses = recent,
             statementDates = statementDates,
-            salaryDates = salaryDates(budget, today, lookahead),
-            fixedDues = fixedDues(budget, today),
+            salaryDates = salaryDates(budget, day, lookahead),
+            fixedDues = fixedDues(budget, day),
         )
-        // Haftalık kapanış günü bütçenin hafta başlangıcıyla aynı olmalı.
-        return rules.planWeek(input, config.copy(weekStart = budget.weekStart))
     }
 
     /**
@@ -115,4 +133,9 @@ class PlanCoachWeek(
             .maxByOrNull { it.amount.minor }
             ?.paydaysBetween(from, to)
             .orEmpty()
+
+    private companion object {
+        /** Önceden planlanan bildirim türlerinin kaç gün önceden planlandığı (ör. 1 ve 2). */
+        val CARRIED_LEADS: List<Int> = NotificationType.entries.map { it.leadDays }.filter { it > 0 }.distinct()
+    }
 }

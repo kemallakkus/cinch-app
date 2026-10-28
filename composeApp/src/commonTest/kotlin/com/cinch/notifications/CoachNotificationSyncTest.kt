@@ -112,7 +112,9 @@ class CoachNotificationSyncTest {
         f.sync.sync()
 
         // Bugün kayıt girildi: yarınki "kayıt unuttun" düşer; tutarı değişen mesajlar yenilenir.
-        assertTrue(NotificationType.FORGOT_LOG !in f.scheduler.pendingTypes)
+        // Bu akşamki kalır: o, boş geçen dün için (dünden planlandı).
+        val forgot = f.scheduler.pending.values.filter { it.type == NotificationType.FORGOT_LOG }
+        assertEquals(listOf(wednesday), forgot.map { it.date })
         assertTrue(f.scheduler.cancelled.isNotEmpty())
         assertTrue(NotificationType.MIDDAY_REMAINING in f.scheduler.pendingTypes)
     }
