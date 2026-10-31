@@ -7,7 +7,7 @@ import kotlinx.datetime.LocalDate
 data class SavingsGoal(
     val id: Long = 0,
     val name: String,
-    val emoji: String = "🐷",
+    val emoji: String = DEFAULT_GOAL_EMOJI,
     val target: Money,
     val createdOn: LocalDate,
 )
@@ -42,3 +42,9 @@ data class GoalProgress(val goal: SavingsGoal, val saved: Money, val deposits: L
         }
     }
 }
+
+/** Kumbara hedefinin varsayılan simgesi. */
+const val DEFAULT_GOAL_EMOJI = "💰"
+
+/** İlk sürümlerin varsayılanı; okunurken [DEFAULT_GOAL_EMOJI]'ye çevrilir (eski kayıtlar ve yedekler). */
+internal const val LEGACY_GOAL_EMOJI = "\uD83D\uDC37"

@@ -1,5 +1,7 @@
 package com.cinch.shared.data
 
+import com.cinch.shared.domain.DEFAULT_GOAL_EMOJI
+import com.cinch.shared.domain.LEGACY_GOAL_EMOJI
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.cinch.shared.db.CinchDatabase
@@ -27,7 +29,8 @@ class SqlSavingsRepository(
                 SavingsGoal(
                     id = it.id,
                     name = it.name,
-                    emoji = it.emoji,
+                    // Eski varsayılan simge yeni varsayılanla gösterilir; veritabanındaki satıra dokunulmaz.
+                    emoji = if (it.emoji == LEGACY_GOAL_EMOJI) DEFAULT_GOAL_EMOJI else it.emoji,
                     target = Money(it.target_minor, Currency.fromCode(it.currency)),
                     createdOn = LocalDate.fromEpochDays(it.created_epoch_day),
                 )

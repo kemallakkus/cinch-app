@@ -115,7 +115,7 @@ class ProgressStripViewModel(
                     note = "Haftalık artan · ${leftover.weekStart.shortLabel()} haftası",
                 ),
             )
-            _effect.send(ProgressStripEffect.Celebrate("🐷 ${leftover.amount.display()} ${goal.emoji} ${goal.name} kumbarasına atıldı"))
+            _effect.send(ProgressStripEffect.Celebrate("💰 ${leftover.amount.display()} ${goal.emoji} ${goal.name} kumbarasına atıldı"))
         }
     }
 

@@ -12,6 +12,7 @@ import com.cinch.navigation.InsightsRoute
 import com.cinch.navigation.ReceiptReviewRoute
 import com.cinch.navigation.StatementReviewRoute
 import com.cinch.notifications.NotificationAccessChecker
+import com.cinch.shared.cards.ObserveCardOverviews
 import com.cinch.shared.coach.NotificationPreferencesStore
 import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.backup.Backups
@@ -116,7 +117,7 @@ class UiModule {
     )
 
     @KoinViewModel
-    fun cardsViewModel(cards: CardRepository): CardsViewModel = CardsViewModel(cards)
+    fun cardsViewModel(overviews: ObserveCardOverviews): CardsViewModel = CardsViewModel(overviews)
 
     @KoinViewModel
     fun cardEditViewModel(@InjectedParam route: CardEditRoute, cards: CardRepository): CardEditViewModel =

@@ -2,6 +2,8 @@ package com.cinch.ui.cards
 
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Immutable
+import com.cinch.shared.cards.CardOverview
+import com.cinch.shared.cards.CardStatus
 import com.cinch.shared.debt.CardPayoffResult
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.CardStatement
@@ -19,6 +21,11 @@ import kotlinx.datetime.LocalDate
  * @param reconciliation "Karşılaştır"a basılınca hesaplanır; kayıtlar değişince kendiliğinden güncellenir.
  * @param statement banka ekranından okunan son ekstre; hiç okunmadıysa null.
  * @param statementStartBalance aynı ekstrenin (aynı son ödeme tarihi) ilk okunan borcu: ödedikçe azalır.
+ * @param overview kartın özeti: durum, ödenecek tutar, son ödemeye kalan gün, bankaya göre eksik.
+ * @param payoffDebt borç planının başlangıç borcu: okunan kalan ekstre borcu, yoksa elle girilmiş eski borç.
+ * @param payoffChoice kullanıcı borç planını açtı/kapattı; null ise son ödeme geçip ödenmediyse kendiliğinden açık.
+ * @param manualCompareOpen bankadaki tutarı elle yazıp karşılaştırma açık (banka ekranı okutulamıyorsa).
+ * @param confirmingPaid "Ödedim" onayı soruluyor.
  */
 @Immutable
 data class CardDetailState(
@@ -37,7 +44,16 @@ data class CardDetailState(
     val statement: CardStatement? = null,
     val statementStartBalance: Money? = null,
     val statementHistory: List<StatementPoint> = emptyList(),
+    val overview: CardOverview? = null,
+    val payoffDebt: Money? = null,
+    val payoffChoice: Boolean? = null,
+    val manualCompareOpen: Boolean = false,
+    val confirmingPaid: Boolean = false,
 ) {
+    /** Borç planı görünür mü. */
+    val payoffExpanded: Boolean
+        get() = payoffChoice ?: (overview?.status == CardStatus.OVERDUE || (overview?.toPay == null && payoffDebt != null))
+
     /**
      * Bankanın dönem içi harcamasının ne kadarı Cinch'e girilmiş (0–1). Okuma bu döneme ait değilse ya da
      * banka tutarı okunamadıysa null.
@@ -67,9 +83,23 @@ data class CardDetailState(
 data class StatementPoint(val dueDate: LocalDate, val amount: Money)
 
 sealed interface CardDetailEvent {
+    /** "Ödedim": ekstre bankadan ödendi, ekran yeniden okutulmadı (önce onay sorulur). */
+    data object MarkPaidClicked : CardDetailEvent
+    data object MarkPaidConfirmed : CardDetailEvent
+    data object MarkPaidDismissed : CardDetailEvent
+
+    /** "Tamamını ödeyemeyecek misin?": borç planını aç/kapat. */
+    data object PayoffToggled : CardDetailEvent
+
+    /** Bankadaki tutarı elle yazarak karşılaştırma: aç/kapat. */
+    data object ManualCompareToggled : CardDetailEvent
+
     /** Yazılan banka tutarını kayıtlarla karşılaştır. */
     data object Reconcile : CardDetailEvent
 
     /** Mutabakattaki eksik tutarı bu karta "Diğer" harcaması olarak ekle. */
     data object AddMissingDifference : CardDetailEvent
+
+    /** Okunan banka ekranına göre eksik tutarı ([CardOverview.missing]) tek harcama olarak ekle. */
+    data object AddStatementDifference : CardDetailEvent
 }

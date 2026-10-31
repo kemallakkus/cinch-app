@@ -369,7 +369,7 @@ private fun ProgressDemo(active: Boolean) {
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            listOf("🌱", "🔥", "🏅", "🎯", "🐷").forEach { emoji ->
+            listOf("🌱", "🔥", "🏅", "🎯", "💰").forEach { emoji ->
                 Box(
                     Modifier.size(48.dp).clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh),

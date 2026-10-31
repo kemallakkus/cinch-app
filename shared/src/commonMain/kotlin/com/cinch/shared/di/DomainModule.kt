@@ -1,5 +1,6 @@
 package com.cinch.shared.di
 
+import com.cinch.shared.cards.ObserveCardOverviews
 import com.cinch.shared.coach.NotificationPreferencesStore
 import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetEngine
@@ -108,6 +109,14 @@ class DomainModule {
     ): PlanCoachWeek = PlanCoachWeek(
         budgets, expenses, cards, incomes, fixedExpenses, statements, backups, engine, rules, preferences = preferences,
     )
+
+    @Factory
+    fun observeCardOverviews(
+        cards: CardRepository,
+        expenses: ExpenseRepository,
+        statements: CardStatementRepository,
+        clock: LocalClock,
+    ): ObserveCardOverviews = ObserveCardOverviews(cards, expenses, statements, clock)
 
     @Single
     fun notificationPreferences(prefs: KeyValueStore): NotificationPreferencesStore = NotificationPreferencesStore(prefs)

@@ -3,6 +3,7 @@ package com.cinch.ui.cards
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cinch.shared.cards.CardOverviews
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.Card
@@ -32,15 +33,16 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
 
 /**
- * Kart detayı: bu ekstre dönemindeki harcamalar, bankayla mutabakat ve devreden borcun kapanış planı.
- * Tutarlar kart para birimindedir; başka birimdeki harcamalar mutabakata girmez.
+ * Kart detayı üç soruyu cevaplar: ne kadar, ne zaman ödenecek (okunan son ekstre, "Ödedim"); sıradaki ekstreye ne
+ * girdi ve bankaya göre eksik var mı; tamamı ödenemeyecekse borç ne zaman biter. Tutarlar kart para birimindedir;
+ * başka birimdeki harcamalar mutabakata girmez.
  */
 @OptIn(ExperimentalCoroutinesApi::class) // flatMapLatest
 class CardDetailViewModel(
     private val route: CardDetailRoute,
     cards: CardRepository,
     private val expenses: ExpenseRepository,
-    statements: CardStatementRepository,
+    private val statements: CardStatementRepository,
     private val reconciler: Reconciler,
     private val simulator: PayoffSimulator,
     private val clock: LocalClock,
@@ -73,6 +75,9 @@ class CardDetailViewModel(
         if (card == null) return@combine current.copy(isLoading = false, card = null)
         val inCurrency = list.filter { it.grossAmount.currency == card.currency }
         val latest = readings.firstOrNull()
+        val overview = CardOverviews.of(card, list, readings, today)
+        // Borç planı okunan kalan borçla; okuma yoksa eskiden elle girilmiş borçla.
+        val debt = overview.toPay ?: card.carriedBalance.takeIf { card.isCredit && !it.isZero && !it.isNegative }
         current.copy(
             statement = latest,
             // Aynı ekstrenin okumaları: borç ödendikçe azalır, en yüksek okuma başlangıçtır.
@@ -85,10 +90,12 @@ class CardDetailViewModel(
             period = card.currentPeriod(today),
             periodExpenses = list.sortedWith(compareByDescending<Expense> { it.date }.thenByDescending { it.id }),
             periodTotal = Money.sum(inCurrency.map { it.grossAmount }, card.currency),
-            payoff = payment?.let {
-                simulator.simulateCard(card.carriedBalance, card.monthlyRatePercent, Money(it, card.currency))
+            overview = overview,
+            payoffDebt = debt,
+            payoff = if (payment == null || debt == null) null else {
+                simulator.simulateCard(debt, card.monthlyRatePercent, Money(payment, debt.currency))
             },
-            firstMonthInterest = firstMonthInterest(card),
+            firstMonthInterest = debt?.let { firstMonthInterest(it, card.monthlyRatePercent) },
             reconciliation = stated?.let {
                 reconciler.reconcile(inCurrency, Money(it, card.currency), tolerance = Money.of(1, card.currency))
             },
@@ -118,18 +125,36 @@ class CardDetailViewModel(
                 else statedMinor.value = stated.minor
             }
             CardDetailEvent.AddMissingDifference -> addMissingDifference()
+            CardDetailEvent.AddStatementDifference -> state.value.overview?.missing?.let { addDifference(it) }
+            CardDetailEvent.MarkPaidClicked -> if (state.value.statement != null) _state.update { it.copy(confirmingPaid = true) }
+            CardDetailEvent.MarkPaidDismissed -> _state.update { it.copy(confirmingPaid = false) }
+            CardDetailEvent.MarkPaidConfirmed -> markPaid()
+            CardDetailEvent.PayoffToggled -> _state.update { it.copy(payoffChoice = !state.value.payoffExpanded) }
+            CardDetailEvent.ManualCompareToggled -> _state.update { it.copy(manualCompareOpen = !it.manualCompareOpen) }
         }
+    }
+
+    /** Son okumanın sıfır borçlu kopyası: geçmiş ve ilerleme bozulmaz, hatırlatmalar susar. */
+    private fun markPaid() {
+        _state.update { it.copy(confirmingPaid = false) }
+        val latest = state.value.statement ?: return
+        viewModelScope.launch { statements.add(CardOverviews.paidReading(latest, today)) }
     }
 
     private fun addMissingDifference() {
         val result = state.value.reconciliation ?: return
-        val card = state.value.card ?: return
         if (result.kind != ReconciliationKind.MISSING_EXPENSE) return
+        addDifference(result.difference)
+    }
+
+    /** Neye harcandığı hatırlanmayan fark: bu karta bugünün tarihiyle "Diğer" harcaması; bütçeye de sayılır. */
+    private fun addDifference(amount: Money) {
+        val card = state.value.card ?: return
         viewModelScope.launch {
             expenses.add(
                 Expense(
                     date = today,
-                    grossAmount = result.difference,
+                    grossAmount = amount,
                     category = Category.DIGER,
                     cardId = card.id,
                     rawText = "Mutabakat farkı",
@@ -147,11 +172,8 @@ class CardDetailViewModel(
             .sortedBy { it.dueDate }
             .takeLast(HISTORY_SIZE)
 
-    private fun firstMonthInterest(card: Card): Money? {
-        if (card.carriedBalance.isZero) return null
-        val minor = (card.carriedBalance.minor * card.monthlyRatePercent / 100.0).roundToLong()
-        return Money(minor, card.currency)
-    }
+    private fun firstMonthInterest(debt: Money, monthlyRatePercent: Double): Money =
+        Money((debt.minor * monthlyRatePercent / 100.0).roundToLong(), debt.currency)
 }
 
 private const val HISTORY_SIZE = 6

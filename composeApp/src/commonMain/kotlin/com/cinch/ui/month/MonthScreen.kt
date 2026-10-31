@@ -251,7 +251,7 @@ private fun SummaryCard(summary: MonthSummary) {
             SummaryLine("🛒 Harcamalar", "− ${summary.spent.display()}", content)
             if (!summary.saved.isZero) {
                 SummaryLine(
-                    "🐷 Kumbaraya",
+                    "💰 Kumbaraya",
                     (if (summary.saved.isNegative) "+ " else "− ") + summary.saved.absolute.display(),
                     content,
                 )
@@ -281,7 +281,7 @@ private fun EmptySummary(onAddIncome: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("🐷", style = MaterialTheme.typography.displaySmall)
+            Text("💰", style = MaterialTheme.typography.displaySmall)
             Text("Ay sonunda ne kalacak?", style = MaterialTheme.typography.titleLarge)
             Text(
                 "Aylık gelirini eklersen, sabit giderlerini ve harcamalarını gelirinden düşüp elinde ne " +
@@ -594,7 +594,7 @@ private fun SavingsTeaser(savedThisMonth: Money?, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("🐷", style = MaterialTheme.typography.headlineSmall)
+        Text("💰", style = MaterialTheme.typography.headlineSmall)
         Column(Modifier.weight(1f)) {
             Text("Kumbara", style = MaterialTheme.typography.titleMedium)
             Text(

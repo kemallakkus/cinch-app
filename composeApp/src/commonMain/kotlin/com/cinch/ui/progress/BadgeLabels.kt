@@ -10,7 +10,7 @@ val Badge.emoji: String
         Badge.STREAK_30 -> "🏆"
         Badge.LOGGED_7 -> "📒"
         Badge.WEEK_ON_TRACK -> "🎯"
-        Badge.FIRST_SAVING -> "🐷"
+        Badge.FIRST_SAVING -> "💰"
         Badge.GOAL_REACHED -> "🌟"
         Badge.DEBT_FINISHED -> "🎉"
         Badge.BACKUP_TAKEN -> "🛡️"

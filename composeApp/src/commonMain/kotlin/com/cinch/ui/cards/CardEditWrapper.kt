@@ -10,12 +10,15 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
+ * @param onDone var olan kart kaydedildi.
+ * @param onCreated yeni kart eklendi: kartın sayfasına geçilir.
  * @param onDeleted kart silindi: o karta ait ekranlar (detay, düzenleme) yığından çıkarılır.
  */
 @Composable
 fun CardEditWrapper(
     route: CardEditRoute,
     onDone: () -> Unit,
+    onCreated: (Long) -> Unit,
     onDeleted: (Long) -> Unit,
     onBack: () -> Unit,
     viewModel: CardEditViewModel = koinViewModel { parametersOf(route) },
@@ -23,11 +26,13 @@ fun CardEditWrapper(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentOnDone by rememberUpdatedState(onDone)
     val currentOnDeleted by rememberUpdatedState(onDeleted)
+    val currentOnCreated by rememberUpdatedState(onCreated)
 
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
             when (effect) {
                 CardEditEffect.Saved -> currentOnDone()
+                is CardEditEffect.Created -> currentOnCreated(effect.cardId)
                 is CardEditEffect.Deleted -> currentOnDeleted(effect.cardId)
             }
         }

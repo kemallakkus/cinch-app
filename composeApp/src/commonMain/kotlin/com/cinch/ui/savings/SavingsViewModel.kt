@@ -55,8 +55,8 @@ data class SavingsState(
     val total: Long get() = goals.sumOf { it.saved.minor }
 
     companion object {
-        const val DEFAULT_EMOJI = "🐷"
-        val EMOJIS = listOf("🐷", "🏖️", "✈️", "🚗", "🏠", "📱", "🎓", "💍", "🎁", "🛟")
+        const val DEFAULT_EMOJI = "💰"
+        val EMOJIS = listOf("💰", "🏖️", "✈️", "🚗", "🏠", "📱", "🎓", "💍", "🎁", "🛟")
     }
 }
 

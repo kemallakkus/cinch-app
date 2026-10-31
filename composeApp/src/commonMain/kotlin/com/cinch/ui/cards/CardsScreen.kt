@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -32,11 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.cinch.ui.onboarding.CoachMarkSteps
 import com.cinch.ui.onboarding.coachMarkTarget
-import com.cinch.shared.domain.Card
-import com.cinch.ui.common.dayOfMonthLabel
+import com.cinch.shared.cards.CardOverview
 import com.cinch.ui.common.display
-import com.cinch.ui.common.formatPercent
-import com.cinch.ui.theme.CinchTheme
 
 /**
  * @param onPickStatement banka ekranı fotoğraflarını seç (kart, fotoğraftaki son 4 haneden bulunur); platformda
@@ -81,9 +79,8 @@ fun CardsScreen(
                 Text("💳", style = MaterialTheme.typography.displaySmall)
                 Text("Kartını ekle", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Henüz kart yok. Kredi kartını eklersen harcarken kartın adını yazman yeter " +
-                        "(\"195 market qnb\"). Hesap kesim gününden bir gün önce hatırlatırız; kartta " +
-                        "ödenmemiş borç varsa ne zaman biteceğini gösteririz.",
+                    "Kartını eklersen harcarken adını yazman yeter (\"195 market qnb\"). Banka uygulamasındaki kart " +
+                        "ekranının fotoğrafından ne kadar ve ne zaman ödeyeceğini okuruz; günü gelmeden hatırlatırız.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -97,24 +94,27 @@ fun CardsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(state.cards, key = { it.id }) { card ->
-                CardTile(card = card, onClick = { onOpen(card.id) })
+            items(state.cards, key = { it.card.id }) { overview ->
+                CardTile(overview = overview, onClick = { onOpen(overview.card.id) })
             }
         }
     }
 }
 
-/** Kredi kartı görünümlü kutucuk; rengi kartın id'sine göre sabit kalır. */
+/**
+ * Kart görünümlü kutucuk: kartın adı ve en çok merak edilen şey; kredi kartında ödenecek tutar ve son ödemeye kalan
+ * gün, ekstre okunmadıysa bu dönemin harcaması ve okutma çağrısı, banka kartında bu ayın harcaması.
+ */
 @Composable
-fun CardTile(card: Card, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
-    val gradients = CinchTheme.colors.cardGradients
-    val brush = gradients[(card.id % gradients.size).toInt().let { if (it < 0) it + gradients.size else it }]
+fun CardTile(overview: CardOverview, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    val card = overview.card
+    val headline = overview.headline
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1.75f)
             .clip(RoundedCornerShape(24.dp))
-            .background(brush)
+            .background(cardBrush(card))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(20.dp),
     ) {
@@ -125,11 +125,7 @@ fun CardTile(card: Card, modifier: Modifier = Modifier, onClick: (() -> Unit)? =
                 color = Color.White,
             )
             Text(
-                when {
-                    !card.isCredit -> "Banka kartı"
-                    card.statementDay != null -> "Hesap kesim: ${dayOfMonthLabel(card.statementDay).lowercase()}"
-                    else -> "Hesap kesim günü yok"
-                },
+                if (card.isCredit) "Kredi kartı" else "Banka kartı",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.85f),
             )
@@ -137,26 +133,28 @@ fun CardTile(card: Card, modifier: Modifier = Modifier, onClick: (() -> Unit)? =
         // Kartın "çipi": küçük, oyuncak gibi bir dokunuş.
         Box(
             Modifier
-                .align(Alignment.CenterStart)
+                .align(Alignment.CenterEnd)
                 .size(width = 40.dp, height = 30.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(Color(0xFFFFD98A).copy(alpha = 0.9f)),
         )
-        Column(Modifier.align(Alignment.BottomEnd), horizontalAlignment = Alignment.End) {
-            if (!card.isCredit) {
-                Text("Hesaptan öder", style = MaterialTheme.typography.titleSmall, color = Color.White)
-            } else if (card.carriedBalance.isZero) {
-                Text("Eski borç yok ✨", style = MaterialTheme.typography.titleSmall, color = Color.White)
-            } else {
-                Text(card.carriedBalance.display(), style = MaterialTheme.typography.titleLarge, color = Color.White)
-                Text("ödenmemiş eski borç", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.85f))
+        Column(Modifier.align(Alignment.BottomStart)) {
+            Text(headline.label, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+            Text(headline.amount.display(), style = MaterialTheme.typography.headlineMedium, color = Color.White)
+        }
+        overview.statusPill?.let { pill ->
+            Surface(
+                modifier = Modifier.align(Alignment.BottomEnd),
+                shape = RoundedCornerShape(12.dp),
+                color = if (overview.needsAttention) Color.White else Color.White.copy(alpha = 0.22f),
+            ) {
+                Text(
+                    pill,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (overview.needsAttention) MaterialTheme.colorScheme.error else Color.White,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                )
             }
         }
-        Text(
-            "Aylık faiz %${formatPercent(card.monthlyRatePercent)}",
-            modifier = Modifier.align(Alignment.BottomStart),
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.85f),
-        )
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.lifecycle.viewModelScope
+import com.cinch.shared.cards.CardStatus
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.shared.debt.PayoffSimulator
 import com.cinch.shared.domain.Card
@@ -189,5 +190,56 @@ class CardDetailViewModelTest {
         // Ocak ekstresi ödendikçe 5.000 → 1.000 okunmuş; grafikte ilk (tam) tutar.
         assertEquals(listOf(tl(4_000), tl(5_000), tl(6_000)), f.state.statementHistory.map { it.amount })
         assertEquals(0.9f, f.state.recordedShare) // banka 1.000 diyor, Cinch'te 900
+    }
+
+    @Test
+    fun overview_dueFromReading_payoffUsesReadDebt_andMarkPaid() = testVm(
+        card = Card(name = "QNB", carriedBalance = Money.of(0, Currency.TRY), monthlyRatePercent = 5.0, statementDay = 15),
+    ) { f ->
+        assertEquals(CardStatus.NO_READING, f.state.overview?.status)
+        assertNull(f.state.payoffDebt) // okuma yok, eski borç yok: plan gösterilmez
+
+        f.statements.add(CardStatement(cardId = f.cardId, readOn = LocalDate(2025, 2, 1), dueDate = LocalDate(2025, 2, 6), statementBalance = tl(10_000)))
+        runCurrent()
+        assertEquals(CardStatus.DUE, f.state.overview?.status)
+        assertEquals(tl(10_000), f.state.payoffDebt)
+        assertFalse(f.state.payoffExpanded) // son ödeme gelmedi: kapalı
+        f.vm.onEvent(CardDetailEvent.PayoffToggled)
+        runCurrent()
+        assertTrue(f.state.payoffExpanded)
+        type(f.state.monthlyPayment, "1.000")
+        assertTrue(f.state.payoff!!.closes)
+
+        f.vm.onEvent(CardDetailEvent.MarkPaidClicked)
+        runCurrent()
+        assertTrue(f.state.confirmingPaid)
+        f.vm.onEvent(CardDetailEvent.MarkPaidConfirmed)
+        runCurrent()
+        assertFalse(f.state.confirmingPaid)
+        assertEquals(CardStatus.PAID, f.state.overview?.status)
+        assertEquals(tl(10_000), f.state.statementStartBalance) // ilk okunan borç kalır
+        assertNull(f.state.payoffDebt)
+    }
+
+    @Test
+    fun overdueOpensThePlan_andReadDifferenceCanBeAdded() = testVm(
+        card = Card(name = "QNB", carriedBalance = Money.of(0, Currency.TRY), monthlyRatePercent = 5.0, statementDay = 15),
+    ) { f ->
+        f.expenses.add(Expense(date = LocalDate(2025, 1, 20), grossAmount = tl(900), cardId = f.cardId))
+        f.statements.add(
+            CardStatement(
+                cardId = f.cardId, readOn = LocalDate(2025, 1, 20), dueDate = LocalDate(2025, 1, 30),
+                statementBalance = tl(5_000), periodSpending = tl(1_240),
+            ),
+        )
+        runCurrent()
+        assertEquals(CardStatus.OVERDUE, f.state.overview?.status)
+        assertTrue(f.state.payoffExpanded) // ödenmemiş görünüyor: plan açık gelir
+        assertEquals(tl(340), f.state.overview?.missing)
+
+        f.vm.onEvent(CardDetailEvent.AddStatementDifference)
+        runCurrent()
+        assertEquals(tl(340), f.expenses.all.value.last().grossAmount)
+        assertNull(f.state.overview?.missing)
     }
 }

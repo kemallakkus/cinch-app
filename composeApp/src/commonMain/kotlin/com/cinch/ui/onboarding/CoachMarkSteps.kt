@@ -19,7 +19,7 @@ object CoachMarkSteps {
         CoachMark(
             key = "home.progress",
             title = "Seri ve kumbara",
-            text = "Payının içinde kaldığın her gün serin uzar 🔥. Haftadan artanı kumbarana atarsın 🐷. " +
+            text = "Payının içinde kaldığın her gün serin uzar 🔥. Haftadan artanı kumbarana atarsın 💰. " +
                 "Seriye dokun, rozetlerini gör.",
         ),
         CoachMark(

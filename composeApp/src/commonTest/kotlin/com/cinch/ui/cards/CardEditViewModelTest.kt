@@ -52,7 +52,7 @@ class CardEditViewModelTest {
         type(vm.state.value.name, "  QNB ")
         vm.onEvent(CardEditEvent.Save)
 
-        assertEquals(CardEditEffect.Saved, vm.effect.first())
+        assertEquals(CardEditEffect.Created(1), vm.effect.first()) // kartın sayfası açılır
         // Boş borç sıfır, oran varsayılan 4,9.
         assertEquals(Card(id = 1, name = "QNB", carriedBalance = tl(0), monthlyRatePercent = 4.9), repo.all.value.single())
     }
@@ -132,5 +132,25 @@ class CardEditViewModelTest {
         assertEquals(CardEditEffect.Saved, vm.effect.first())
         assertEquals("1243", repo.all.value.single().last4)
         assertEquals(CardType.CREDIT, repo.all.value.single().type)
+    }
+
+    @Test
+    fun advanced_closedByDefault_opensWhenItsFieldIsInvalid_legacyBalanceOnlyIfSet() = testVm { vm, _ ->
+        assertFalse(vm.state.value.advancedOpen)
+        assertFalse(vm.state.value.hasLegacyBalance) // yeni kartta eski borç sorulmaz
+        type(vm.state.value.name, "QNB")
+        type(vm.state.value.monthlyRate, "abc")
+        vm.onEvent(CardEditEvent.Save)
+        runCurrent()
+        assertTrue(vm.state.value.rateError)
+        assertTrue(vm.state.value.advancedOpen) // hata gizli kalmasın
+
+        vm.onEvent(CardEditEvent.AdvancedToggled)
+        assertFalse(vm.state.value.advancedOpen)
+    }
+
+    @Test
+    fun legacyBalance_isShownForOldCards() = testVm(existing = Card(name = "QNB", carriedBalance = tl(12_500))) { vm, _ ->
+        assertTrue(vm.state.value.hasLegacyBalance)
     }
 }

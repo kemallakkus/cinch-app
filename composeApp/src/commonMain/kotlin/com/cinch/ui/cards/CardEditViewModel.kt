@@ -48,6 +48,7 @@ class CardEditViewModel(
         when (event) {
             is CardEditEvent.TypePicked -> _state.update { it.copy(type = event.type, balanceError = false, rateError = false) }
             is CardEditEvent.StatementDayPicked -> _state.update { it.copy(statementDay = event.day) }
+            CardEditEvent.AdvancedToggled -> _state.update { it.copy(advancedOpen = !it.advancedOpen) }
             CardEditEvent.Save -> save()
             CardEditEvent.DeleteRequested -> _state.update { it.copy(isConfirmingDelete = true) }
             CardEditEvent.DeleteDismissed -> _state.update { it.copy(isConfirmingDelete = false) }
@@ -66,7 +67,14 @@ class CardEditViewModel(
             )
             s.monthlyRate.setTextAndPlaceCursorAtEnd(formatPercent(card.monthlyRatePercent))
         }
-        _state.update { it.copy(isLoading = false, statementDay = card?.statementDay, type = card?.type ?: it.type) }
+        _state.update {
+            it.copy(
+                isLoading = false,
+                statementDay = card?.statementDay,
+                type = card?.type ?: it.type,
+                hasLegacyBalance = card?.carriedBalance?.isZero == false,
+            )
+        }
     }
 
     private fun save() {
@@ -88,7 +96,8 @@ class CardEditViewModel(
             rateError = rate == null,
         )
         if (errors.nameError || errors.balanceError || errors.rateError) {
-            _state.value = errors
+            // Hata gizli "Gelişmiş" alanındaysa görünsün.
+            _state.value = errors.copy(advancedOpen = errors.advancedOpen || errors.balanceError || errors.rateError)
             return
         }
 
@@ -105,8 +114,12 @@ class CardEditViewModel(
         _state.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
-                if (existing == null) cards.add(card) else cards.update(card)
-                _effect.send(CardEditEffect.Saved)
+                if (existing == null) {
+                    _effect.send(CardEditEffect.Created(cards.add(card)))
+                } else {
+                    cards.update(card)
+                    _effect.send(CardEditEffect.Saved)
+                }
             } finally {
                 _state.update { it.copy(isSaving = false) }
             }

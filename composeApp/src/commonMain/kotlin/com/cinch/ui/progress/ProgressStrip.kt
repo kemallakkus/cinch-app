@@ -90,7 +90,7 @@ fun ProgressStrip(
                 onClick = onOpenSavings,
                 label = {
                     Text(
-                        if (state.savedTotal > 0) "🐷 Kumbara ${Money(state.savedTotal, Currency.TRY).display()}" else "🐷 Kumbara",
+                        if (state.savedTotal > 0) "💰 Kumbara ${Money(state.savedTotal, Currency.TRY).display()}" else "💰 Kumbara",
                     )
                 },
                 colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -119,7 +119,7 @@ fun ProgressStrip(
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (state.goals.isEmpty()) {
-                        FilledTonalButton(onClick = onOpenSavings) { Text("🐷 Hedef oluştur") }
+                        FilledTonalButton(onClick = onOpenSavings) { Text("💰 Hedef oluştur") }
                     } else {
                         state.goals.take(3).forEach { progress ->
                             FilledTonalButton(onClick = { onEvent(ProgressStripEvent.LeftoverToGoal(progress.goal.id)) }) {

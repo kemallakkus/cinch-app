@@ -1,5 +1,7 @@
 package com.cinch.shared.data
 
+import com.cinch.shared.domain.LEGACY_GOAL_EMOJI
+import com.cinch.shared.domain.DEFAULT_GOAL_EMOJI
 import com.cinch.shared.domain.GoalProgress
 import com.cinch.shared.domain.SavingsDeposit
 import com.cinch.shared.domain.SavingsGoal
@@ -40,6 +42,15 @@ class SqlSavingsRepositoryTest {
         repo.deleteGoal(trip)
         assertEquals(listOf(phone), repo.observeGoals().first().map { it.id })
         assertTrue(repo.observeDeposits().first().all { it.goalId == phone })
+    }
+
+    @Test
+    fun legacyPigEmoji_isShownAsTheNewDefault() = runTest {
+        val repo = SqlSavingsRepository(newDatabase(), StandardTestDispatcher(testScheduler))
+        repo.addGoal(SavingsGoal(name = "Eski", emoji = LEGACY_GOAL_EMOJI, target = tl(1_000), createdOn = LocalDate(2025, 1, 1)))
+        repo.addGoal(SavingsGoal(name = "Tatil", emoji = "🏖️", target = tl(1_000), createdOn = LocalDate(2025, 1, 1)))
+
+        assertEquals(listOf(DEFAULT_GOAL_EMOJI, "🏖️"), repo.observeGoals().first().map { it.emoji })
     }
 
     private fun LocalDate.plusOneDay() = LocalDate.fromEpochDays(toEpochDays() + 1)

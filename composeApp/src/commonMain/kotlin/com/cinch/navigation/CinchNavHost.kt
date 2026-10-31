@@ -293,7 +293,16 @@ private fun cinchEntries(
         StatementReviewWrapper(route = route, onDone = goBack, onBack = goBack)
     }
     entry<CardEditRoute> { route ->
-        CardEditWrapper(route = route, onDone = goBack, onDeleted = removeCardScreens, onBack = goBack)
+        CardEditWrapper(
+            route = route,
+            onDone = goBack,
+            onCreated = { id ->
+                goBack()
+                navigate(CardDetailRoute(id))
+            },
+            onDeleted = removeCardScreens,
+            onBack = goBack,
+        )
     }
     entry<SettingsRoute> {
         SettingsWrapper(

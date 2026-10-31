@@ -123,7 +123,7 @@ fun SavingsScreen(
                                         state.total,
                                         Currency.TRY
                                     ).display()
-                                } biriktirdin 🐷", style = MaterialTheme.typography.titleMedium
+                                } biriktirdin 💰", style = MaterialTheme.typography.titleMedium
                             )
                         }
                         Text(
@@ -141,7 +141,7 @@ fun SavingsScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text("🐷", style = MaterialTheme.typography.displayMedium)
+                            Text("💰", style = MaterialTheme.typography.displayMedium)
                             Text("İlk hedefini koy", style = MaterialTheme.typography.titleMedium)
                             Text(
                                 "Tatil, telefon, acil durum fonu… Hedefin olunca artan para daha anlamlı.",
