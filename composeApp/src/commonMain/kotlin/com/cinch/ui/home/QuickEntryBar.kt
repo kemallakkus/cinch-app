@@ -69,6 +69,7 @@ fun QuickEntryBar(
     onPickReceipt: (() -> Unit)? = null,
     autoFocus: Boolean = false,
     header: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(autoFocus) {
@@ -78,6 +79,7 @@ fun QuickEntryBar(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         shadowElevation = 8.dp,
+        modifier = modifier,
     ) {
         Column(
             modifier = Modifier

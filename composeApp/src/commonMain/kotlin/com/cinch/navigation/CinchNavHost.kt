@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.runtime.setValue
@@ -48,6 +47,7 @@ import com.cinch.ui.history.ExpenseEditWrapper
 import com.cinch.ui.history.HistoryWrapper
 import com.cinch.ui.home.HomeWrapper
 import com.cinch.ui.insights.InsightsWrapper
+import com.cinch.ui.onboarding.IntroScreen
 import com.cinch.ui.month.DebtDetailWrapper
 import com.cinch.ui.month.FixedEditWrapper
 import com.cinch.ui.month.IncomeEditWrapper
@@ -68,21 +68,43 @@ enum class TopTab(val label: String, val root: CinchRoute) {
 }
 
 /**
- * Uygulamanın gezinme kökü. İlk açılışta (bütçe yoksa) yalnız bütçe kurulumu gösterilir; sonra alt menülü
- * ana yapıya geçilir.
+ * Uygulamanın gezinme kökü. İlk açılışta önce tanıtım, sonra (bütçe yoksa) alt menüsüz bütçe kurulumu gösterilir;
+ * ardından alt menülü ana yapıya geçilir.
+ *
+ * @param start [IntroRoute], [BudgetSetupRoute] ya da ana ekran.
  */
 @Composable
-fun CinchNavHost(startWithOnboarding: Boolean) {
-    var onboarding by rememberSaveable { mutableStateOf(startWithOnboarding) }
-    if (onboarding) {
-        BudgetSetupWrapper(
+fun CinchNavHost(start: CinchRoute, onIntroFinished: () -> Unit) {
+    var step by rememberSaveable {
+        mutableIntStateOf(
+            when (start) {
+                IntroRoute -> FirstRun.INTRO
+                is BudgetSetupRoute -> FirstRun.BUDGET
+                else -> FirstRun.DONE
+            },
+        )
+    }
+    when (step) {
+        FirstRun.INTRO -> IntroScreen(
+            onFinish = {
+                onIntroFinished()
+                step = FirstRun.BUDGET
+            },
+        )
+        FirstRun.BUDGET -> BudgetSetupWrapper(
             route = BudgetSetupRoute(isOnboarding = true),
-            onDone = { onboarding = false },
+            onDone = { step = FirstRun.DONE },
             onBack = {},
         )
-    } else {
-        MainTabs()
+        else -> MainTabs()
     }
+}
+
+/** İlk açılış adımları; kaydedilebilmesi için sayı. */
+private object FirstRun {
+    const val INTRO = 0
+    const val BUDGET = 1
+    const val DONE = 2
 }
 
 /**

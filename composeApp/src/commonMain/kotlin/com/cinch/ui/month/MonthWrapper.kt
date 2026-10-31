@@ -9,6 +9,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cinch.ui.onboarding.CoachMarkSteps
+import com.cinch.ui.onboarding.CoachMarks
 import com.cinch.ui.receipt.ReceiptReadingDialog
 import com.cinch.ui.receipt.rememberReceiptFlow
 import kotlinx.coroutines.launch
@@ -47,20 +49,22 @@ fun MonthWrapper(
         }
     }
 
-    MonthScreen(
-        state = state,
-        onEvent = viewModel::onEvent,
-        onAddIncome = onAddIncome,
-        onOpenIncome = onOpenIncome,
-        onAddFixed = onAddFixed,
-        onOpenFixed = onOpenFixed,
-        onOpenDebt = onOpenDebt,
-        onOpenInsights = onOpenInsights,
-        onScanBill = if (receipt.isSupported) receipt::scan else null,
-        onOpenCashCalendar = onOpenCashCalendar,
-        onOpenSavings = onOpenSavings,
-        snackbarHostState = snackbarHostState,
-        confettiTrigger = confetti,
-    )
+    CoachMarks(CoachMarkSteps.MONTH) {
+        MonthScreen(
+            state = state,
+            onEvent = viewModel::onEvent,
+            onAddIncome = onAddIncome,
+            onOpenIncome = onOpenIncome,
+            onAddFixed = onAddFixed,
+            onOpenFixed = onOpenFixed,
+            onOpenDebt = onOpenDebt,
+            onOpenInsights = onOpenInsights,
+            onScanBill = if (receipt.isSupported) receipt::scan else null,
+            onOpenCashCalendar = onOpenCashCalendar,
+            onOpenSavings = onOpenSavings,
+            snackbarHostState = snackbarHostState,
+            confettiTrigger = confetti,
+        )
+    }
     ReceiptReadingDialog(receipt)
 }

@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import com.cinch.ui.onboarding.CoachMarkSteps
+import com.cinch.ui.onboarding.CoachMarks
 import com.cinch.shared.receipt.OcrCodec
 import com.cinch.ui.receipt.ReceiptReadingDialog
 import com.cinch.ui.receipt.rememberReceiptFlow
@@ -23,12 +25,14 @@ fun CardsWrapper(
     val reader = rememberReceiptFlow(snackbarHostState, maxImages = STATEMENT_PHOTOS) { scan ->
         onStatementRead(OcrCodec.encode(scan))
     }
-    CardsScreen(
-        state = state,
-        onAdd = onAdd,
-        onOpen = onOpen,
-        snackbarHostState = snackbarHostState,
-        onPickStatement = if (reader.isSupported) reader::pickFromGallery else null,
-    )
+    CoachMarks(CoachMarkSteps.CARDS) {
+        CardsScreen(
+            state = state,
+            onAdd = onAdd,
+            onOpen = onOpen,
+            snackbarHostState = snackbarHostState,
+            onPickStatement = if (reader.isSupported) reader::pickFromGallery else null,
+        )
+    }
     ReceiptReadingDialog(reader, title = "Ekran okunuyor…")
 }

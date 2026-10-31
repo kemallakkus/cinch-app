@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.cinch.ui.onboarding.CoachMarkSteps
+import com.cinch.ui.onboarding.coachMarkTarget
 import com.cinch.shared.domain.Card
 import com.cinch.ui.common.dayOfMonthLabel
 import com.cinch.ui.common.display
@@ -55,14 +57,20 @@ fun CardsScreen(
                 title = { Text("Kartlar") },
                 actions = {
                     if (onPickStatement != null && state.cards.isNotEmpty()) {
-                        TextButton(onClick = onPickStatement) { Text("📸 Ekstre oku") }
+                        TextButton(
+                            onClick = onPickStatement,
+                            modifier = Modifier.coachMarkTarget(CoachMarkSteps.CARDS[1].key),
+                        ) { Text("📸 Ekstre oku") }
                     }
                 },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = onAdd) { Text("Kart ekle") }
+            ExtendedFloatingActionButton(
+                onClick = onAdd,
+                modifier = Modifier.coachMarkTarget(CoachMarkSteps.CARDS[0].key),
+            ) { Text("Kart ekle") }
         },
     ) { padding ->
         if (!state.isLoading && state.cards.isEmpty()) {

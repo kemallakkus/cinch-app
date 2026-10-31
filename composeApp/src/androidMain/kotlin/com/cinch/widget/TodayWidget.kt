@@ -34,25 +34,12 @@ import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
 import com.cinch.shared.gamification.ObserveGamification
 import com.cinch.shared.time.LocalClock
-import com.cinch.ui.common.display
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 import org.koin.core.qualifier.named
-
-/** Widget'ın gösterdiği; bütçe kurulmadıysa [hasBudget] false. */
-private data class WidgetData(
-    val hasBudget: Boolean,
-    val todayText: String = "",
-    val over: Boolean = false,
-    val weekText: String = "",
-    val streak: Int = 0,
-)
 
 /**
  * Ana ekran widget'ı: bugün harcayabileceğin, haftanın durumu, sınır serisi; "+ Harcama" ile uygulamayı açmadan
@@ -65,23 +52,13 @@ class TodayWidget : GlanceAppWidget() {
         provideContent { Content(data) }
     }
 
-    private suspend fun load(): WidgetData {
-        val koin = GlobalContext.getOrNull() ?: return WidgetData(hasBudget = false)
-        val today = koin.get<LocalClock>().today()
-        val status = koin.get<ObserveBudgetStatus>().invoke(today).first() ?: return WidgetData(hasBudget = false)
-        val streak = koin.get<ObserveGamification>().invoke(today).first().streaks.budgetStreak
-        val over = status.todayRemaining.isNegative
-        return WidgetData(
-            hasBudget = true,
-            todayText = status.todayRemaining.absolute.display(),
-            over = over,
-            weekText = "Bu hafta ${status.weekSpent.display()} / ${status.weeklyLimit.display()}",
-            streak = streak,
-        )
+    private suspend fun load(): TodaySnapshot {
+        val koin = GlobalContext.getOrNull() ?: return TodaySnapshot.NO_BUDGET
+        return LoadTodaySnapshot(koin.get<ObserveBudgetStatus>(), koin.get<ObserveGamification>(), koin.get<LocalClock>()).invoke()
     }
 
     @Composable
-    private fun Content(data: WidgetData) {
+    private fun Content(data: TodaySnapshot) {
         val background = if (data.over) Color(0xFFFFD6DA) else Color(0xFFFFE3CC)
         val ink = ColorProvider(if (data.over) Color(0xFF5C0F1E) else Color(0xFF3B0A00))
         Box(
@@ -144,10 +121,7 @@ object TodayWidgetUpdater {
         val koin = GlobalContext.getOrNull() ?: return
         val app = context.applicationContext
         val scope = koin.get<CoroutineScope>(named("appScope"))
-        val changes = merge(
-            koin.get<BudgetRepository>().observe().map { },
-            koin.get<ExpenseRepository>().observeAll().map { },
-        )
+        val changes = widgetChanges(koin.get<BudgetRepository>(), koin.get<ExpenseRepository>())
         scope.launch {
             changes.debounce(DEBOUNCE_MS).collect { TodayWidget().updateAll(app) }
         }

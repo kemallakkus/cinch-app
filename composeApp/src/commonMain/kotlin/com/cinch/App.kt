@@ -5,12 +5,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.navigation.CinchNavHost
+import com.cinch.navigation.DeepLinks
+import com.cinch.navigation.HomeRoute
+import com.cinch.ui.home.QuickAddSheet
 import com.cinch.notifications.CoachNotificationSync
 import com.cinch.ui.root.RootViewModel
 import com.cinch.ui.theme.CinchTheme
@@ -32,7 +35,22 @@ fun App() {
         }
 
         // Başlangıç ekranı belli olana kadar boş arka plan (yerel okuma, göz kırpması kadar sürer).
-        startRoute?.let { CinchNavHost(startWithOnboarding = it is BudgetSetupRoute) }
-            ?: Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+        val start = startRoute
+        if (start == null) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface))
+        } else {
+            Box(Modifier.fillMaxSize()) {
+                CinchNavHost(start = start, onIntroFinished = viewModel::introFinished)
+
+                // iOS widget'ındaki "+ Harcama": uygulamanın üstünde yalnız hızlı kayıt alanı. Bütçe kurulmadan anlamsız;
+                // diğer bağlantılar ("cinch://home") için uygulamanın açılması yeter.
+                val link by DeepLinks.pending.collectAsStateWithLifecycle()
+                if (link == DeepLinks.QUICK_ADD && start == HomeRoute) {
+                    QuickAddSheet(onClose = DeepLinks::consume)
+                } else if (link != null) {
+                    LaunchedEffect(link) { DeepLinks.consume() }
+                }
+            }
+        }
     }
 }

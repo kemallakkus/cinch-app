@@ -47,6 +47,8 @@ import com.cinch.ui.common.InfoTip
 import com.cinch.ui.common.display
 import com.cinch.ui.common.initial
 import com.cinch.ui.common.longDayLabel
+import com.cinch.ui.onboarding.CoachMarkSteps
+import com.cinch.ui.onboarding.coachMarkTarget
 import com.cinch.ui.theme.CinchTheme
 
 /**
@@ -84,7 +86,13 @@ fun HomeScreen(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                QuickEntryBar(state = state, onEvent = onEvent, onScanReceipt = onScanReceipt, onPickReceipt = onPickReceipt)
+                QuickEntryBar(
+                    state = state,
+                    onEvent = onEvent,
+                    onScanReceipt = onScanReceipt,
+                    onPickReceipt = onPickReceipt,
+                    modifier = Modifier.coachMarkTarget(CoachMarkSteps.HOME[1].key),
+                )
             },
         ) { padding ->
             if (state.isLoading) {
@@ -102,7 +110,7 @@ fun HomeScreen(
                 item(key = "status") {
                     // İzin kartı boşsa (izin var ya da ertelendi) yer kaplamaz.
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        state.status?.let { TodayHero(it, state.weekDays) }
+                        state.status?.let { TodayHero(it, state.weekDays, Modifier.coachMarkTarget(CoachMarkSteps.HOME[0].key)) }
                         prompt()
                     }
                 }
@@ -118,7 +126,10 @@ fun HomeScreen(
                             modifier = Modifier.weight(1f),
                         )
                         // Geçmiş haftalar, arama ve sabit gider ödemeleri tüm geçmişte.
-                        TextButton(onClick = onOpenHistory) { Text("Tüm geçmiş") }
+                        TextButton(
+                            onClick = onOpenHistory,
+                            modifier = Modifier.coachMarkTarget(CoachMarkSteps.HOME[3].key),
+                        ) { Text("Tüm geçmiş") }
                     }
                 }
 
@@ -143,12 +154,12 @@ fun HomeScreen(
 }
 
 @Composable
-private fun TodayHero(status: BudgetStatus, days: List<DaySpend>) {
+private fun TodayHero(status: BudgetStatus, days: List<DaySpend>, modifier: Modifier = Modifier) {
     val overToday = status.todayRemaining.isNegative
     val colors = CinchTheme.colors
     val content = if (overToday || status.isOverLimit) colors.onHeroOver else colors.onHero
 
-    HeroCard(brush = if (overToday || status.isOverLimit) colors.heroOver else colors.hero) {
+    HeroCard(brush = if (overToday || status.isOverLimit) colors.heroOver else colors.hero, modifier = modifier) {
         Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

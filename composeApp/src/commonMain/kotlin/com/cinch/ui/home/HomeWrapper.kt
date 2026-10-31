@@ -15,7 +15,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
 import com.cinch.ui.notifications.NotificationPromptWrapper
+import com.cinch.ui.onboarding.CoachMarkSteps
+import com.cinch.ui.onboarding.CoachMarks
+import com.cinch.ui.onboarding.coachMarkTarget
 import com.cinch.ui.progress.ProgressStripWrapper
 import com.cinch.ui.receipt.ReceiptReadingDialog
 import com.cinch.ui.receipt.rememberReceiptFlow
@@ -62,28 +67,32 @@ fun HomeWrapper(
         }
     }
 
-    HomeScreen(
-        state = state,
-        onEvent = viewModel::onEvent,
-        snackbarHostState = snackbarHostState,
-        confettiTrigger = confetti,
-        onOpenExpense = onOpenExpense,
-        onOpenHistory = onOpenHistory,
-        onScanReceipt = if (receipt.isSupported) receipt::scan else null,
-        onPickReceipt = if (receipt.isSupported) receipt::pickFromGallery else null,
-        prompt = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                NotificationPromptWrapper()
-                ProgressStripWrapper(
-                    onOpenAchievements = onOpenAchievements,
-                    onOpenSavings = onOpenSavings,
-                    onCelebrate = { message ->
-                        confetti++
-                        scope.launch { snackbarHostState.showSnackbar(message) }
-                    },
-                )
-            }
-        },
-    )
+    CoachMarks(CoachMarkSteps.HOME) {
+        HomeScreen(
+            state = state,
+            onEvent = viewModel::onEvent,
+            snackbarHostState = snackbarHostState,
+            confettiTrigger = confetti,
+            onOpenExpense = onOpenExpense,
+            onOpenHistory = onOpenHistory,
+            onScanReceipt = if (receipt.isSupported) receipt::scan else null,
+            onPickReceipt = if (receipt.isSupported) receipt::pickFromGallery else null,
+            prompt = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NotificationPromptWrapper()
+                    Box(Modifier.coachMarkTarget(CoachMarkSteps.HOME[2].key)) {
+                        ProgressStripWrapper(
+                            onOpenAchievements = onOpenAchievements,
+                            onOpenSavings = onOpenSavings,
+                            onCelebrate = { message ->
+                                confetti++
+                                scope.launch { snackbarHostState.showSnackbar(message) }
+                            },
+                        )
+                    }
+                }
+            },
+        )
+    }
     ReceiptReadingDialog(receipt)
 }

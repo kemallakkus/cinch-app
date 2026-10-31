@@ -55,6 +55,7 @@ import com.cinch.ui.progress.AchievementsViewModel
 import com.cinch.ui.progress.ProgressStripViewModel
 import com.cinch.ui.savings.SavingsViewModel
 import com.cinch.ui.receipt.ReceiptReviewViewModel
+import com.cinch.ui.onboarding.CoachMarkProgress
 import com.cinch.ui.root.RootViewModel
 import com.cinch.ui.settings.SettingsViewModel
 import com.cinch.ui.statement.StatementReviewViewModel
@@ -63,6 +64,7 @@ import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import org.koin.core.annotation.Module
+import org.koin.core.annotation.Single
 import org.koin.core.annotation.Named
 
 /** Ekranların ViewModel'leri ve yalnız UI'ın ihtiyaç duyduğu bağımlılıklar. */
@@ -71,7 +73,11 @@ import org.koin.core.annotation.Named
 class UiModule {
 
     @KoinViewModel
-    fun rootViewModel(budgets: BudgetRepository): RootViewModel = RootViewModel(budgets)
+    fun rootViewModel(budgets: BudgetRepository, prefs: KeyValueStore): RootViewModel = RootViewModel(budgets, prefs)
+
+    /** Ekran tanıtım balonlarının "görüldü" kaydı; Ayarlar'dan sıfırlanınca açık ekranlar da duysun diye tek. */
+    @Single
+    fun coachMarkProgress(prefs: KeyValueStore): CoachMarkProgress = CoachMarkProgress(prefs)
 
     @KoinViewModel
     fun budgetSetupViewModel(
@@ -174,7 +180,8 @@ class UiModule {
         cards: CardRepository,
         fixedExpenses: FixedExpenseRepository,
         clock: LocalClock,
-    ): SettingsViewModel = SettingsViewModel(budgets, access, backups, tracker, expenses, cards, fixedExpenses, clock)
+        tips: CoachMarkProgress,
+    ): SettingsViewModel = SettingsViewModel(budgets, access, backups, tracker, expenses, cards, fixedExpenses, clock, tips)
 
     @KoinViewModel
     fun debtDetailViewModel(

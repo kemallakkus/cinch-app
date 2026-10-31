@@ -69,6 +69,8 @@ import com.cinch.ui.common.emoji
 import com.cinch.ui.common.label
 import com.cinch.ui.common.monthYearLabel
 import com.cinch.ui.common.shortLabel
+import com.cinch.ui.onboarding.CoachMarkSteps
+import com.cinch.ui.onboarding.coachMarkTarget
 import com.cinch.ui.theme.CinchTheme
 import com.cinch.ui.insights.changeColor
 import com.cinch.ui.insights.comparisonSentence
@@ -114,10 +116,14 @@ fun MonthScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item(key = "summary") {
-                    if (summary == null || !summary.hasIncome) EmptySummary(onAddIncome) else SummaryCard(summary)
+                    Box(Modifier.coachMarkTarget(CoachMarkSteps.MONTH[0].key)) {
+                        if (summary == null || !summary.hasIncome) EmptySummary(onAddIncome) else SummaryCard(summary)
+                    }
                 }
 
-                item(key = "cashCalendar") { CashCalendarTeaser(onOpenCashCalendar) }
+                item(key = "cashCalendar") {
+                    Box(Modifier.coachMarkTarget(CoachMarkSteps.MONTH[1].key)) { CashCalendarTeaser(onOpenCashCalendar) }
+                }
                 item(key = "savings") { SavingsTeaser(summary?.saved, onOpenSavings) }
 
                 state.breakdown?.takeIf { !it.isEmpty }?.let { breakdown ->
@@ -125,16 +131,18 @@ fun MonthScreen(
                 }
 
                 item(key = "fixedHeader") {
-                    SectionHeader(
-                        title = "Sabit giderlerin",
-                        info = "Kira, fatura, abonelik, kredi taksiti gibi her ay ödediklerin. Haftalık " +
-                            "harcama payına sayılmaz; ay hesabına girer. Ödeyince yanındaki yuvarlağa dokun.",
-                        action = "Ekle",
-                        onAction = onAddFixed,
-                        // Değişken faturayı elle yazmak yerine fotoğrafından okut; eşleşen sabit gider ödendi işaretlenir.
-                        secondaryAction = onScanBill?.let { "📷 Fatura" },
-                        onSecondaryAction = onScanBill ?: {},
-                    )
+                    Box(Modifier.coachMarkTarget(CoachMarkSteps.MONTH[2].key)) {
+                        SectionHeader(
+                            title = "Sabit giderlerin",
+                            info = "Kira, fatura, abonelik, kredi taksiti gibi her ay ödediklerin. Haftalık " +
+                                "harcama payına sayılmaz; ay hesabına girer. Ödeyince yanındaki yuvarlağa dokun.",
+                            action = "Ekle",
+                            onAction = onAddFixed,
+                            // Değişken faturayı elle yazmak yerine fotoğrafından okut; eşleşen sabit gider ödendi işaretlenir.
+                            secondaryAction = onScanBill?.let { "📷 Fatura" },
+                            onSecondaryAction = onScanBill ?: {},
+                        )
+                    }
                 }
                 val fixed = summary?.fixed.orEmpty()
                 if (fixed.isEmpty()) {

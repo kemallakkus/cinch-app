@@ -15,6 +15,10 @@ sealed interface CinchRoute : NavKey
 @Serializable
 data class BudgetSetupRoute(val isOnboarding: Boolean = false) : CinchRoute
 
+/** İlk açılış tanıtımı; ardından bütçe kurulumu gelir. */
+@Serializable
+data object IntroRoute : CinchRoute
+
 @Serializable
 data object HomeRoute : CinchRoute
 

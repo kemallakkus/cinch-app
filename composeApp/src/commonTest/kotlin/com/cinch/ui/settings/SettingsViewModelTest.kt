@@ -1,6 +1,8 @@
 package com.cinch.ui.settings
 
 import androidx.lifecycle.viewModelScope
+import com.cinch.ui.onboarding.CoachMarkProgress
+import com.cinch.ui.onboarding.CoachMarkSteps
 import com.cinch.notifications.NotificationAccess
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.shared.budget.BudgetConfig
@@ -29,6 +31,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -68,6 +71,7 @@ class SettingsViewModelTest {
         val backups: FakeBackups,
         val tracker: BackupTracker,
         val expenses: FakeExpenseRepository,
+        val tips: CoachMarkProgress,
     )
 
     private fun testFixture(access: NotificationAccess = NotificationAccess.GRANTED, block: suspend TestScope.(Fixture) -> Unit) =
@@ -77,13 +81,14 @@ class SettingsViewModelTest {
                 val backups = FakeBackups()
                 val tracker = BackupTracker(InMemoryKeyValueStore())
                 val expenses = FakeExpenseRepository()
+                val tips = CoachMarkProgress(InMemoryKeyValueStore())
                 val vm = SettingsViewModel(
                     FakeBudgetRepository(BudgetConfig(weeklyLimit = Money.of(700, Currency.TRY))), fake, backups, tracker,
-                    expenses, FakeCardRepository(expenses), FakeFixedExpenseRepository(), FakeClock(today),
+                    expenses, FakeCardRepository(expenses), FakeFixedExpenseRepository(), FakeClock(today), tips,
                 )
                 backgroundScope.launch { vm.state.collect {} }
                 runCurrent()
-                block(Fixture(vm, fake, backups, tracker, expenses))
+                block(Fixture(vm, fake, backups, tracker, expenses, tips))
                 vm.viewModelScope.cancel()
             }
         }
@@ -178,5 +183,16 @@ class SettingsViewModelTest {
         val save = f.vm.effect.first() as SettingsEffect.SaveFile
         assertEquals("text/csv", save.mimeType)
         assertTrue("195 market" in save.content.decodeToString())
+    }
+
+    @Test
+    fun replayTips_resetsSeenBalloons() = testFixture { f ->
+        val key = CoachMarkSteps.HOME.first().key
+        f.tips.markSeen(key)
+
+        f.vm.onEvent(SettingsEvent.ReplayTipsClicked)
+
+        assertFalse(f.tips.isSeen(key))
+        assertTrue(f.vm.effect.first() is SettingsEffect.Message)
     }
 }

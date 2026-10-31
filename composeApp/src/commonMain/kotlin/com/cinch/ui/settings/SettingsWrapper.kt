@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
 import androidx.compose.material.icons.outlined.TableChart
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -131,6 +132,13 @@ fun SettingsScreen(
                 },
             )
             if (backupSupported) BackupSection(state, onEvent)
+            HorizontalDivider()
+            ListItem(
+                modifier = Modifier.clickable { onEvent(SettingsEvent.ReplayTipsClicked) },
+                leadingContent = { Icon(Icons.Outlined.Lightbulb, contentDescription = null) },
+                headlineContent = { Text("Ekran tanıtımlarını yeniden göster") },
+                supportingContent = { Text("Bugün, Bu ay ve Kartlar'daki yol gösteren balonlar") },
+            )
         }
     }
 

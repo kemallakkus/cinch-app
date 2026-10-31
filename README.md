@@ -16,7 +16,7 @@ cinch-app/
 ├─ shared/        KMP kütüphane: domain çekirdeği + SQLDelight (jvm/android/ios hedefleri)
 ├─ composeApp/    KMP kütüphane: ortak Compose UI (App) + Android Activity + iOS ViewController
 ├─ androidApp/    İnce com.android.application modülü (APK; composeApp'e bağlı)
-└─ iosApp/        SwiftUI kabuğu (Xcode projesi IDE'de üretilir)
+└─ iosApp/        SwiftUI kabuğu, WidgetKit eklentisi, Siri kısayolu; Xcode projesi `project.yml`den (XcodeGen) üretilir
 ```
 
 > AGP 9'da `com.android.application` + `kotlin.multiplatform` aynı modülde kullanılamadığından
@@ -105,16 +105,18 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 
 | Ekran | Ne yapar | Dosyalar |
 |---|---|---|
-| Bütçe kurulumu | İlk açılışta (bütçe yoksa) alt menüsüz açılır; haftalık harcama sınırı ve hafta başlangıcı. Gelir ve sabit giderler girildiyse haftalık sınır önerir ("Bunu kullan"). Sonra Ayarlar'dan düzenlenir | `ui/budget/` |
+| Tanıtım | İlk açılışta, bütçe kurulumundan önce dört kaydırmalı sayfa: günlük pay (sayarak gelen tutar), "yaz, Cinch anlasın" (harf harf yazılan örnek ve anlaşılan kayıt), seri/rozet/kumbara, verilerin telefonda kalması. "Geç" ya da "Bütçemi kuralım" ile biter, bir daha gösterilmez; bütçesi olan (eski sürümden gelen) kullanıcı görmez | `ui/onboarding/IntroScreen.kt`, `ui/root/` |
+| Ekran balonları | Bugün, Bu ay ve Kartlar'da ilk girişte ekranı karartıp tek bir öğeyi aydınlatan balonlar (bugünkü pay, hızlı kayıt, seri, geçmiş; ay hesabı, para takvimi, sabit giderler; kart ekleme, ekstre okuma). Her balon bir kez gösterilir; hedefi henüz ekranda olmayan balon (ör. kart eklenmeden "Ekstre oku") hedef ilk göründüğünde çıkar. "Geç" o ekranın hepsini kapatır; Ayarlar'dan yeniden gösterilir | `ui/onboarding/CoachMarks.kt`, `CoachMarkSteps.kt` |
+| Bütçe kurulumu | İlk açılışta (tanıtımdan sonra, bütçe yoksa) alt menüsüz açılır; haftalık harcama sınırı ve hafta başlangıcı. Gelir ve sabit giderler girildiyse haftalık sınır önerir ("Bunu kullan"). Sonra Ayarlar'dan düzenlenir | `ui/budget/` |
 | Bugün | Bugün kalan pay, haftalık ilerleme, ay toplamı; bu haftanın harcamaları (dokun → düzenle, sola kaydır → sil, "Geri al"); "Tüm geçmiş". Üstte oyunsu şerit: "🔥 7 gün sınırda" (→ Başarılar), "🐷 Kumbara 2.340 ₺" (→ Kumbara); bugün payı aşılmışken seri en az 3 günse "seriyi korumak için bugün dur" uyarısı; geçen haftadan artan varsa "Kumbaraya at" kartı (hedefe tek dokunuş, "Şimdi değil" ya da "Hedef oluştur"). Yeni rozet kazanılınca konfeti ve mesaj (bir kez) | `ui/home/`, `ui/progress/ProgressStrip*` |
 | Başarılar | Sınır serisi (bugün, en uzun, kayıt serisi, sınırda kapanan haftalar) ve rozetler: kazanılanlar günüyle, kilitliler ne gerektiği ve ilerleme çubuğuyla | `ui/progress/Achievements*` |
 | Kumbara | Hedefler (ad, simge, hedef tutar): ilerleme, kalan, son hareketler (✕ ile silinir); "+ Ekle" (geçen haftanın artanı önerilir), "Çek" (biriken kadar), düzenle/sil. Hedef dolunca konfeti. Para bankadan çıkmaz; ayrılan tutar "Bu ay elinde kalan"dan düşer | `ui/savings/` |
 | Harcama düzenleme | Tutar, açıklama, kategori, tarih (takvim), "senin payın" (tamamı / yarısı / hiç) ve kart; silme. Tutar değişip açıklamaya dokunulmadıysa açıklamadaki sayı da güncellenir ("195 market" → "200 market"). Kategori düzeltilirse kelime öğrenilir. Sabit gider ödemesinde yalnız tutar, tarih ve kart | `ui/history/ExpenseEdit*` |
 | Geçmiş | Ay ay liste (gün başlıkları ve gün toplamı), kategori süzgeci; arama kutusu doluysa tüm geçmişte açıklama, not, kategori ve kart adında arar (Türkçe harf farkı gözetmez) | `ui/history/History*` |
-| Fiş / fatura okuma | Hızlı kayıt alanındaki 📷: "Fiş ya da fatura tara" (ML Kit belge tarayıcı: kenar bulur, kırpar) ya da "Galeriden seç". Yazı telefonda okunur, fotoğraf saklanmaz, internete gitmez. Onay ekranında tutar, açıklama, kategori, tarih ve kart dolu gelir; kullanıcı kontrol edip kaydeder. Faturada eşleşen sabit gider seçili gelir ve "Bu ay"da ödendi işaretlenir (bu ay zaten ödendiyse uyarır). "Bu ay"daki "📷 Fatura" düğmesi de aynı akışı açar. Şimdilik yalnız Android; iOS'ta düğmeler gizli | `receipt/` (platform), `ui/receipt/` |
+| Fiş / fatura okuma | Hızlı kayıt alanındaki 📷: "Fiş ya da fatura tara" (ML Kit belge tarayıcı: kenar bulur, kırpar) ya da "Galeriden seç". Yazı telefonda okunur, fotoğraf saklanmaz, internete gitmez. Onay ekranında tutar, açıklama, kategori, tarih ve kart dolu gelir; kullanıcı kontrol edip kaydeder. Faturada eşleşen sabit gider seçili gelir ve "Bu ay"da ödendi işaretlenir (bu ay zaten ödendiyse uyarır). "Bu ay"daki "📷 Fatura" düğmesi de aynı akışı açar. iOS'ta VisionKit belge tarayıcı (simülatörde yoksa galeriye düşer), `PHPickerViewController` ve Vision metin tanıma (Türkçe destekleniyorsa tr-TR, yoksa en-US); konumlar ML Kit'teki gibi sol üst köşeden piksel olarak verilir, ekstre okuma da aynı yolu kullanır | `receipt/` (platform), `ui/receipt/` |
 | Nereye gitti? | "Bu ay"daki özet kartından açılır: halka grafik, geçen ayla kıyas, kategoriler (pay çubuğu, ↑/↓ değişim; dokun → o ayın o kategorideki kayıtları), en çok para giden kelimeler; ay ay gezilir | `ui/insights/` |
 | Bu ay | Gelir − sabit giderler − harcamalar − kumbaraya ayrılan ("🐷 Kumbaraya" satırı) = elinde kalan; Kumbara kartı; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir; borçlarda ilerleme çubuğu, borca dokun → detay: ilerleme, bitiş tahmini, ödeme ekle/sil) ve gelirler, ekleme/düzenleme | `ui/month/` |
-| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu; **yedek al** (sistemin kaydetme penceresi: telefon, Drive…), **yedekten geri yükle** (önce içindekileri gösterip onay ister), **harcamaları Excel'e aktar** (CSV). Son yedek 30 günü geçince uyarı rengiyle | `ui/settings/`, `files/` (platform) |
+| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu; **yedek al** (sistemin kaydetme penceresi: telefon, Drive…), **yedekten geri yükle** (önce içindekileri gösterip onay ister), **harcamaları Excel'e aktar** (CSV). Son yedek 30 günü geçince uyarı rengiyle; **ekran tanıtımlarını yeniden göster**. Yedek ve CSV iOS'ta sistemin dosya penceresiyle (Dosyalar, iCloud Drive…) | `ui/settings/`, `files/` (platform) |
 | Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori/tarih önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir. Tarih "dün", "cuma" yazınca değişir; 📅 çipinden takvimle de seçilir | `ui/home/QuickEntryBar.kt` |
 | Kartlar | Kart listesi; ekleme/düzenleme: **kredi kartı** (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz) ya da **banka kartı** (yalnız ad: ekstre, borç, faiz yok; hareketlerden eksik harcama bulma için). Silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
 | Para takvimi | "Bu ay"daki "📅 Para takvimi": hesaptaki parayı yazınca "Maaşa (15 Kas) kadar yetiyor, maaştan önceki gün ~3.200 ₺ kalır" ya da "27 Eki'de eksiye düşüyorsun; günde ~300 ₺ az harcarsan yetiyor". Altında hareketli günler ve gün sonu bakiyesi; ekstresi okunmamış kredi kartı varsa uyarır | `ui/cashflow/` |
@@ -134,7 +136,9 @@ Navigation 3 (sekme başına geri yığını, `navigation/CinchNavHost.kt`); her
 `Screen(state, onEvent)` düzeninde. ViewModel'ler `di/UiModule.kt`'de `@KoinViewModel` ile tanımlı ve
 `commonTest`'te sahte repository'lerle test ediliyor. Metinler şimdilik Türkçe ve koda gömülü.
 
-## Ana ekran widget'ı (Android, `composeApp/src/androidMain/.../widget/`)
+## Ana ekran widget'ı ve uygulamayı açmadan kayıt
+
+### Android (`composeApp/src/androidMain/.../widget/`)
 
 `TodayWidget` (Glance): "Bugün harcayabileceğin 640 ₺" (aşıldıysa kırmızımsı zeminde "Bugünkü payını aştın"), bu
 haftanın harcaması / sınır, 🔥 sınır serisi. Bütçe kurulmadıysa "kurmak için dokun". Widget'a dokununca uygulama,
@@ -144,7 +148,21 @@ ekranın `HomeViewModel`'ini kullanır, kart/kategori/tarih çözümü aynıdır
 
 Güncelleme: `TodayWidgetUpdater` (uygulama açılışında kurulur) bütçe ya da harcama değişince 1 sn bekleyip
 widget'ı yeniler; gün değişimi için Android ayrıca yarım saatte bir yeniler (`res/xml/today_widget_info.xml`).
-iOS'ta widget yok (WidgetKit ayrı bir Swift hedefi gerektirir).
+Gösterilenler ortak koddan gelir (`widget/TodaySnapshot.kt`: `LoadTodaySnapshot`, `widgetChanges`); hızlı kayıt
+penceresi de ortaktır (`ui/home/QuickAddSheet.kt`).
+
+### iOS (`iosApp/CinchWidget/`, `composeApp/src/iosMain/.../widget/IosWidgetSync.kt`)
+
+WidgetKit eklentisi Kotlin çalıştırmaz: uygulama, bütçe ya da harcama değişince anlık görüntüyü App Group'a
+(`group.com.cinch.app`, `UserDefaults`) yazar ve `WidgetCenter.reloadAllTimelines()` ile widget'ı yeniler
+(`IosWidgetSync`, Swift'ten `iOSApp.init`'te başlatılır). Küçük ve orta boy: küçükte dokunmak doğrudan hızlı kayda
+(`cinch://quick-add`), ortada "+ Harcama" hızlı kayda, gerisi uygulamaya gider. Hızlı kayıt bağlantısı uygulamanın
+üstünde `QuickAddSheet`'i açar (`navigation/DeepLinks.kt`). Günlük pay her gün değiştiği hâlde widget kendi
+hesaplayamadığı için, gün dönünce eski görüntü soluk ve "Dünkü durum · güncellemek için aç" notuyla gösterilir.
+
+iOS'ta widget metin alamadığından **uygulamayı açmadan kayıt** Siri / Kısayollar / Spotlight / Eylem düğmesiyle
+yapılır: "Cinch harcama ekle" → "Ne harcadın?" → "195 market" → "Kaydedildi: 195,00 ₺ 🛒 Market"
+(`iosApp/iosApp/AddExpenseIntent.swift` → `QuickAddBridge` → `SaveQuickEntry`, ana ekranla aynı ayrıştırma).
 
 ## Koç bildirimleri (`composeApp/.../notifications/`)
 
@@ -182,7 +200,16 @@ Küçük tercihler (`KeyValueStore`) Android'de SharedPreferences, iOS'ta NSUser
 
 # iOS framework (simülatör)
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+# iOS Xcode projesi (bir kez, project.yml değişince yeniden)
+brew install xcodegen
+cd iosApp && xcodegen
 ```
+
+iOS projesi `iosApp/project.yml`den üretilir: uygulama (`com.cinch.app`) ve widget eklentisi
+(`com.cinch.app.widget`), ikisinde de App Group `group.com.cinch.app`, en düşük iOS 17. Xcode'da imzalama için
+`DEVELOPMENT_TEAM`'i doldur (ya da "Signing & Capabilities"ten takım seç); Kotlin framework'ü derleme öncesi adımda
+Gradle üretir (`embedAndSignAppleFrameworkForXcode`).
 
 ## Araç sürümleri
 
@@ -192,12 +219,10 @@ Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.1
 
 ## Sonraki adımlar
 
-- İlk açılışta ekranı tanıtan odaklı balonlar (coach mark); yuvarlak hatlı özel yazı tipi (ör. Nunito)
+- Yuvarlak hatlı özel yazı tipi (ör. Nunito)
 - Bildirim saatlerini (sessiz saatler) saat seçiciyle ayarlama
 - Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
-- iOS'ta fiş okuma: VisionKit tarayıcı + Vision metin tanıma (`composeApp/src/iosMain/.../receipt/ReceiptCapture.ios.kt` şimdilik boş)
-- iOS'ta yedek dosyası seçici: `UIDocumentPickerViewController` (`composeApp/src/iosMain/.../files/FileTransfer.ios.kt` şimdilik boş)
-- iOS'ta ana ekran widget'ı (WidgetKit; veriyi App Group ile paylaşma) ve hızlı kayıt için App Intent
+- iOS widget'ının gece kendi güncellenmesi (BGAppRefreshTask ile günlük payı yeniden yazma)
 - Kumbara hedefine tarih koyup "haftada ne kadar atmalısın" önerisi
-- iOS Xcode projesini oluşturma (`iosApp/` Swift kaynakları hazır)
+- Android'de de Kısayollar karşılığı: "Cinch'e harcama ekle" için App Actions / Google Asistan

@@ -3,6 +3,7 @@ package com.cinch.ui.settings
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cinch.ui.onboarding.CoachMarkProgress
 import com.cinch.notifications.NotificationAccess
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.shared.backup.BackupException
@@ -58,6 +59,9 @@ sealed interface SettingsEvent {
     class FileOpened(val content: ByteArray?) : SettingsEvent
     data object RestoreConfirmed : SettingsEvent
     data object RestoreDismissed : SettingsEvent
+
+    /** Ekran tanıtım balonları yeniden gösterilsin. */
+    data object ReplayTipsClicked : SettingsEvent
 }
 
 sealed interface SettingsEffect {
@@ -81,6 +85,7 @@ class SettingsViewModel(
     private val cards: CardRepository,
     private val fixedExpenses: FixedExpenseRepository,
     private val clock: LocalClock,
+    private val tips: CoachMarkProgress,
 ) : ViewModel() {
 
     private enum class SaveKind { BACKUP, CSV }
@@ -135,6 +140,10 @@ class SettingsViewModel(
             is SettingsEvent.FileSaved -> fileSaved(event.ok)
             is SettingsEvent.FileOpened -> fileOpened(event.content)
             SettingsEvent.RestoreConfirmed -> restore()
+            SettingsEvent.ReplayTipsClicked -> {
+                tips.resetAll()
+                _effect.trySend(SettingsEffect.Message("Tanıtım balonları ekranlarda yeniden gösterilecek"))
+            }
             SettingsEvent.RestoreDismissed -> {
                 restoreContent = null
                 ui.update { it.copy(pendingRestore = null) }
