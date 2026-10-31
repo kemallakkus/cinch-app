@@ -1,6 +1,8 @@
 package com.cinch.shared.parser
 
 import com.cinch.shared.category.TextNormalizer
+import com.cinch.shared.language.LanguagePack
+import com.cinch.shared.language.LanguagePacks
 
 /**
  * Hızlı yazarken boşluksuz girilen tutar: "40market" → "40" + "market", "195tl" → "195". Sayının ardı yalnız
@@ -11,7 +13,8 @@ object GluedAmount {
     /** @param word sayıya bitişik kelime; para birimiyse ("tl", "₺") boş. */
     data class Split(val number: String, val word: String)
 
-    fun split(token: String): Split? {
+    /** @param language para birimi ve ölçü ekleri; varsayılan bütün diller (ör. düzenleme ekranındaki metin). */
+    fun split(token: String, language: LanguagePack = LanguagePacks.ALL): Split? {
         if (token.firstOrNull()?.isDigit() != true) return null
         val end = token.indexOfFirst { !it.isDigit() && it != '.' && it != ',' }
         if (end < 0) return null // zaten ayrı bir sayı
@@ -19,17 +22,10 @@ object GluedAmount {
         val suffix = token.substring(end)
         val folded = TextNormalizer.normalize(suffix)
         return when {
-            folded in CURRENCY_SUFFIXES -> Split(number, "")
-            folded in UNIT_SUFFIXES -> null
+            folded in language.quickEntry.currencySuffixes -> Split(number, "")
+            folded in language.quickEntry.unitSuffixes -> null
             suffix.all { it.isLetter() } -> Split(number, suffix)
             else -> null
         }
     }
-
-    private val CURRENCY_SUFFIXES = setOf("tl", "₺", "lira", "try")
-
-    private val UNIT_SUFFIXES = setOf(
-        "kg", "gr", "g", "gram", "lt", "l", "litre", "ml", "cl", "km", "cm", "mm", "m", "adet", "x",
-        "li", "lu", "lik", "luk", "lk",
-    )
 }

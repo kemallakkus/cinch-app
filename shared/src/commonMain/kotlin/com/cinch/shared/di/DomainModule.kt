@@ -1,5 +1,6 @@
 package com.cinch.shared.di
 
+import com.cinch.shared.coach.NotificationPreferencesStore
 import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.CashBalanceStore
@@ -12,6 +13,9 @@ import com.cinch.shared.budget.ObserveSpendingBreakdown
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.CorrectionStore
 import com.cinch.shared.category.KeywordDictionary
+import com.cinch.shared.language.LanguagePack
+import com.cinch.shared.language.LanguagePacks
+import com.cinch.shared.language.deviceLanguageCode
 import com.cinch.shared.coach.CoachNotificationPlanner
 import com.cinch.shared.coach.CoachRules
 import com.cinch.shared.coach.PlanCoachWeek
@@ -45,8 +49,15 @@ class DomainModule {
     @Single
     fun localClock(): LocalClock = SystemLocalClock
 
+    /**
+     * Ayrıştırıcıların kelimeleri: telefonun dili önce, Türkçe ve İngilizce her zaman anlaşılır (kullanıcı hangi
+     * dilde yazarsa yazsın; yurt dışı fişi de okunur).
+     */
     @Single
-    fun keywordDictionary(): KeywordDictionary = KeywordDictionary.turkishDefault()
+    fun languagePack(): LanguagePack = LanguagePacks.active(deviceLanguageCode())
+
+    @Single
+    fun keywordDictionary(language: LanguagePack): KeywordDictionary = KeywordDictionary.of(language)
 
     /** Düzeltmeler veritabanından gelir; kullanıcı düzelttikçe kalıcı olarak öğrenir. */
     @Single
@@ -54,13 +65,14 @@ class DomainModule {
         Categorizer(dictionary, corrections)
 
     @Single
-    fun quickEntryParser(categorizer: Categorizer): QuickEntryParser = QuickEntryParser(categorizer)
+    fun quickEntryParser(categorizer: Categorizer, language: LanguagePack): QuickEntryParser =
+        QuickEntryParser(categorizer, language = language)
 
     @Single
-    fun receiptParser(categorizer: Categorizer): ReceiptParser = ReceiptParser(categorizer)
+    fun receiptParser(categorizer: Categorizer, language: LanguagePack): ReceiptParser = ReceiptParser(categorizer, language)
 
     @Single
-    fun statementReader(): StatementReader = StatementReader()
+    fun statementReader(language: LanguagePack): StatementReader = StatementReader(language = language)
 
     @Single
     fun budgetEngine(): BudgetEngine = BudgetEngine()
@@ -92,7 +104,13 @@ class DomainModule {
         backups: BackupTracker,
         engine: BudgetEngine,
         rules: CoachRules,
-    ): PlanCoachWeek = PlanCoachWeek(budgets, expenses, cards, incomes, fixedExpenses, statements, backups, engine, rules)
+        preferences: NotificationPreferencesStore,
+    ): PlanCoachWeek = PlanCoachWeek(
+        budgets, expenses, cards, incomes, fixedExpenses, statements, backups, engine, rules, preferences = preferences,
+    )
+
+    @Single
+    fun notificationPreferences(prefs: KeyValueStore): NotificationPreferencesStore = NotificationPreferencesStore(prefs)
 
     @Factory
     fun observeMonthSummary(

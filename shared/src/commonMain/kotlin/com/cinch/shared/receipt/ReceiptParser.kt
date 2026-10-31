@@ -3,6 +3,8 @@ package com.cinch.shared.receipt
 import com.cinch.shared.category.Categorizer
 import com.cinch.shared.category.TextNormalizer
 import com.cinch.shared.domain.Category
+import com.cinch.shared.language.LanguagePack
+import com.cinch.shared.language.LanguagePacks
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.money.MoneyInput
@@ -40,12 +42,17 @@ data class ReceiptDraft(
  * "Son Ödeme Tarihi") için yazıldı. Tanıma hatalarına karşı esnek: "245 ,90" gibi boşluklar toparlanır,
  * tarih ve saat tutar sanılmaz.
  */
-class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
+class ReceiptParser(
+    private val categorizer: Categorizer = Categorizer(),
+    language: LanguagePack = LanguagePacks.TURKISH,
+) {
+
+    private val words = language.receipt
 
     fun parse(text: String, today: LocalDate, currency: Currency = Currency.TRY): ReceiptDraft {
         val rows = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
         val normalized = rows.map { TextNormalizer.normalize(it) }
-        val isBill = BILL_HINTS.any { hint -> normalized.any { hint in it } }
+        val isBill = words.billHints.any { hint -> normalized.any { hint in it } }
         val merchant = findMerchant(rows, normalized)
         val dates = findDates(rows, normalized, today)
         return ReceiptDraft(
@@ -55,7 +62,7 @@ class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
             merchant = merchant,
             category = if (isBill) Category.FATURA else guessCategory(merchant, rows),
             isBill = isBill,
-            paidByCard = rows.any { "****" in it } || CARD_HINTS.any { hint -> normalized.any { hint in it } },
+            paidByCard = rows.any { "****" in it } || words.cardHints.any { hint -> normalized.any { hint in it } },
             rows = rows,
         )
     }
@@ -81,29 +88,30 @@ class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
             return labelled.filter { it.first == best }.maxOf { it.second }
         }
 
-        val usable = rows.indices.filter { i -> FALLBACK_SKIP.none { it in normalized[i] } && !isTaxOnly(normalized[i]) }
+        val usable = rows.indices.filter { i -> words.fallbackSkip.none { it in normalized[i] } && !isTaxOnly(normalized[i]) }
         val starred = usable.flatMap { i -> amountsIn(rows[i], currency, starredOnly = true) }
         return starred.maxOrNull() ?: usable.flatMap { i -> amountsIn(rows[i], currency) }.maxOrNull()
     }
 
+    /** En yüksek puanlı eşleşen etiket; dışlanan satırda yalnız [ReceiptLabel.beatsExcludes] olanlar sayılır. */
     private fun labelScore(row: String): Int {
-        val wordSet = words(row)
-        return when {
-            "odenecek" in row -> 5
-            "genel toplam" in row -> 4
-            excludedLabel(row, wordSet) -> 0
-            "toplam" in row || "top" in wordSet -> 3
-            "tutar" in row -> 2
-            else -> 0
+        val wordSet = wordsOf(row)
+        val matching = words.totalLabels.filter { label ->
+            if (label.wholeWord) label.phrase in wordSet else label.phrase in row
         }
+        val strong = matching.filter { it.beatsExcludes }.maxOfOrNull { it.score }
+        if (strong != null) return strong
+        if (excludedLabel(row, wordSet)) return 0
+        return matching.maxOfOrNull { it.score } ?: 0
     }
 
     /** "Ara toplam", "Toplam KDV", "İndirim toplamı", "Toplam tüketim 245,50 kWh" gibi satırlar toplam değildir. */
     private fun excludedLabel(row: String, wordSet: Set<String>): Boolean =
-        LABEL_EXCLUDES.any { it in row } || isTaxOnly(row) || wordSet.any { it in UNIT_WORDS }
+        words.totalExcludes.any { it in row } || isTaxOnly(row) || wordSet.any { it in words.unitWords }
 
     /** KDV satırı; "KDV dahil toplam" ise toplamın kendisidir. */
-    private fun isTaxOnly(row: String): Boolean = ("kdv" in row || "otv" in row) && "dahil" !in row
+    private fun isTaxOnly(row: String): Boolean =
+        words.taxWords.any { it in row } && words.taxIncludedWords.none { it in row }
 
     /**
      * Satırdaki tutarlar: kuruşu yazılmış sayılar ("245,90", "1.234,56", "245.90"). Tarih ("15.03.2025"),
@@ -136,18 +144,20 @@ class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
             val dates = datesIn(rows[i])
             val row = normalized[i]
             // "Son Ödeme Tarihi" etiketi ve tarihi ayrı satırlara düşmüş olabilir.
-            val previousIsDueLabel = i > 0 && "son odeme" in normalized[i - 1] && datesIn(rows[i - 1]).isEmpty()
-            val isDueRow = "son odeme" in row || (dates.isNotEmpty() && previousIsDueLabel)
+            val previousIsDueLabel = i > 0 && isDueLabel(normalized[i - 1]) && datesIn(rows[i - 1]).isEmpty()
+            val isDueRow = isDueLabel(row) || (dates.isNotEmpty() && previousIsDueLabel)
             if (isDueRow) {
                 if (due == null) due = dates.firstOrNull()
                 continue
             }
             val past = dates.filter { it <= today }
-            if (labelled == null && "tarih" in row) labelled = past.firstOrNull()
+            if (labelled == null && words.dateLabels.any { it in row }) labelled = past.firstOrNull()
             if (first == null) first = past.firstOrNull()
         }
         return (labelled ?: first) to due
     }
+
+    private fun isDueLabel(row: String): Boolean = words.dueLabels.any { it in row }
 
     private fun datesIn(row: String): List<LocalDate> = DATE.findAll(row).mapNotNull { m ->
         val day = m.groupValues[1].toInt()
@@ -165,13 +175,13 @@ class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
     private fun findMerchant(rows: List<String>, normalized: List<String>): String? {
         for (i in rows.indices.take(MERCHANT_SEARCH_ROWS)) {
             val row = normalized[i]
-            if (MERCHANT_SKIP_PARTS.any { it in row }) continue
-            if (words(row).any { it in MERCHANT_SKIP_WORDS }) continue
+            if (words.merchantSkipParts.any { it in row }) continue
+            if (wordsOf(row).any { it in words.merchantSkipWords }) continue
             val letters = rows[i].count { it.isLetter() }
             if (letters < 3 || rows[i].count { it.isDigit() } > letters) continue
             val kept = rows[i].split(' ')
                 .filter { it.isNotBlank() }
-                .filterNot { word -> stripPunctuation(TextNormalizer.normalize(word)) in LEGAL_WORDS }
+                .filterNot { word -> stripPunctuation(TextNormalizer.normalize(word)) in words.legalWords }
                 .filterNot { word -> word.none { it.isLetterOrDigit() } }
                 .take(3)
             if (kept.isEmpty()) continue
@@ -212,7 +222,7 @@ class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
         return categorizer.categorizeTokens(words).category
     }
 
-    private fun words(normalizedRow: String): Set<String> =
+    private fun wordsOf(normalizedRow: String): Set<String> =
         normalizedRow.split(' ', '\t', ':').map { stripPunctuation(it) }.filter { it.isNotEmpty() }.toSet()
 
     private fun stripPunctuation(word: String): String = word.filter { it.isLetterOrDigit() }
@@ -228,27 +238,5 @@ class ReceiptParser(private val categorizer: Categorizer = Categorizer()) {
 
         /** gg.aa.yyyy, gg/aa/yyyy, gg-aa-yy. */
         val DATE = Regex("(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4}|\\d{2})(?!\\d)")
-
-        /** Abonelik faturası işaretleri (alışveriş e-Arşiv faturalarında bunlar olmaz). */
-        val BILL_HINTS = listOf(
-            "son odeme", "abone", "tesisat", "tuketim", "fatura donemi", "sozlesme hesap", "okuma tarihi", "sayac",
-        )
-
-        val CARD_HINTS = listOf("kredi karti", "banka karti", "temassiz", "kart ile", "kartla", "kart no")
-
-        val LABEL_EXCLUDES = listOf("ara toplam", "indirim", "iskonto", "para ustu", "puan", "matrah", "tuketim")
-        val UNIT_WORDS = setOf("kwh", "m3", "sm3", "kg", "lt", "gb", "dk", "adet")
-
-        /** Yedek tutar aramasında atlanan satırlar: verilen nakit, para üstü, kartla ödenen (aynı tutarın tekrarı). */
-        val FALLBACK_SKIP = listOf("nakit", "para ustu", "kart", "puan", "indirim")
-
-        val MERCHANT_SKIP_PARTS = listOf("hos geldiniz", "hosgeldiniz", "e-arsiv", "earsiv", "www", "http", ".com")
-        val MERCHANT_SKIP_WORDS = setOf(
-            "fis", "fisi", "tarih", "saat", "vkn", "tckn", "vergi", "vd", "tel", "telefon", "adres", "mersis",
-            "fatura", "faturasi", "sayin", "ettn", "kasa", "sicil", "no",
-        )
-        val LEGAL_WORDS = setOf(
-            "as", "tas", "ltd", "sti", "ltdsti", "tic", "ticaret", "san", "sanayi", "ve", "limited", "sirketi", "anonim", "sirket",
-        )
     }
 }

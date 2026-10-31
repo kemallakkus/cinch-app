@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -49,7 +50,7 @@ class PlanCoachWeekTest {
         val statements: SqlCardStatementRepository,
     )
 
-    private fun TestScope.fixture(): Fixture {
+    private fun TestScope.fixture(preferences: NotificationPreferencesStore? = null): Fixture {
         val db = newDatabase()
         val io = StandardTestDispatcher(testScheduler)
         val budgets = SqlBudgetRepository(db, io)
@@ -62,6 +63,7 @@ class PlanCoachWeekTest {
             budgets, expenses, cards, incomes, fixed,
             PlanCoachWeek(
                 budgets, expenses, cards, incomes, fixed, statements, BackupTracker(InMemoryKeyValueStore()), BudgetEngine(), CoachRules(),
+                preferences = preferences,
             ),
             statements,
         )
@@ -251,5 +253,28 @@ class PlanCoachWeekTest {
         f.statements.add(CardStatement(cardId = qnb, readOn = today, dueDate = LocalDate(2025, 1, 16), statementBalance = tl(0)))
 
         assertTrue(f.plan(today).none { it.type == NotificationType.CARD_DUE })
+    }
+
+    @Test
+    fun preferences_turnOffGroups_moveTheDailyShare_andLimitPerDay() = runTest {
+        val store = NotificationPreferencesStore(InMemoryKeyValueStore())
+        val f = fixture(store)
+        f.budgets.save(BudgetConfig(weeklyLimit = tl(700)))
+        assertTrue(f.plan(today).any { it.type == NotificationType.MIDDAY_REMAINING })
+
+        // Kapatılan grup planda yok; günde en fazla 1.
+        store.update { it.copy(disabled = setOf(NotificationGroup.DAILY_SHARE), maxPerDay = 1) }
+        val quiet = f.plan(today)
+        assertTrue(quiet.none { it.type == NotificationType.MIDDAY_REMAINING })
+        assertTrue(quiet.groupBy { it.date }.values.all { it.size <= 1 })
+
+        // Günün payı saati değişir; sessiz saate düşerse sessiz saat bitişine kayar.
+        store.update { it.copy(disabled = emptySet(), maxPerDay = 2, middayTime = LocalTime(11, 30)) }
+        val middays = f.plan(today).filter { it.type == NotificationType.MIDDAY_REMAINING }
+        assertTrue(middays.isNotEmpty() && middays.all { it.time == LocalTime(11, 30) })
+
+        store.update { it.copy(quietHours = QuietHours(LocalTime(10, 0), LocalTime(12, 0))) }
+        val shifted = f.plan(today).filter { it.type == NotificationType.MIDDAY_REMAINING }
+        assertTrue(shifted.isNotEmpty() && shifted.all { it.time == LocalTime(12, 0) })
     }
 }

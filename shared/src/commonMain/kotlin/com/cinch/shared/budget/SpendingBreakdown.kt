@@ -1,5 +1,6 @@
 package com.cinch.shared.budget
 
+import com.cinch.shared.language.LanguagePacks
 import com.cinch.shared.category.TextNormalizer
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
@@ -106,14 +107,18 @@ object SpendingBreakdowns {
 
     private const val TOP_WORD_COUNT = 5
 
-    /** Kategori sayılmayacak kadar genel kelimeler. */
-    private val STOPWORDS = setOf("ile", "icin", "bir", "iki", "uc", "ve", "de", "da", "kart", "nakit")
 
     /**
      * @param expenses en az [BreakdownPeriod.previousStart]..[BreakdownPeriod.end] aralığını kapsayan kayıtlar;
      *   aralık dışındakiler, sabit gider ödemeleri ve [currency] dışındakiler yok sayılır.
      */
-    fun compute(expenses: List<Expense>, period: BreakdownPeriod, currency: Currency): SpendingBreakdown {
+    /** @param stopwords sayılmayacak kadar genel kelimeler (dil paketlerinden; varsayılan bütün diller). */
+    fun compute(
+        expenses: List<Expense>,
+        period: BreakdownPeriod,
+        currency: Currency,
+        stopwords: Set<String> = LanguagePacks.ALL.stopwords,
+    ): SpendingBreakdown {
         val usable = expenses.filter { it.grossAmount.currency == currency }.discretionary()
         val current = usable.filter { it.date in period.start..period.end }
         val previous = usable.filter { it.date in period.previousStart..period.previousEnd }
@@ -141,19 +146,19 @@ object SpendingBreakdowns {
             previousTotal = previousTotal,
             count = current.size,
             categories = categories,
-            topWords = topWords(current, currency),
+            topWords = topWords(current, currency, stopwords),
         )
     }
 
     /** Aynı kayıtta iki kelime varsa ("migros market") tutar ikisine de yazılır. */
-    private fun topWords(expenses: List<Expense>, currency: Currency): List<TopWord> {
+    private fun topWords(expenses: List<Expense>, currency: Currency, stopwords: Set<String>): List<TopWord> {
         data class Acc(var display: String, var minor: Long = 0, var count: Int = 0)
 
         val byToken = linkedMapOf<String, Acc>()
         for (expense in expenses) {
             val originals = TextNormalizer.tokenize(expense.rawText)
             for (token in expense.tokens.toSet()) {
-                if (token.length < 3 || token in STOPWORDS || token.any { it.isDigit() }) continue
+                if (token.length < 3 || token in stopwords || token.any { it.isDigit() }) continue
                 val display = originals.firstOrNull { TextNormalizer.normalize(it) == token } ?: token
                 val acc = byToken.getOrPut(token) { Acc(display) }
                 acc.minor += expense.chargeableAmount.minor

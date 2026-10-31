@@ -8,10 +8,12 @@ import com.cinch.shared.time.LocalClock
 import com.cinch.ui.common.display
 import com.cinch.ui.common.emoji
 import com.cinch.ui.common.label
+import kotlinx.datetime.LocalDate
 
 /**
- * Uygulama açılmadan gelen hızlı kayıt (iOS: Siri / Kısayollar "Cinch'e harcama ekle"). Ana ekranın hızlı kayıt
- * alanıyla aynı ayrıştırma: tutar, kategori, tarih, metinde adı geçen kart.
+ * Uygulama açılmadan gelen hızlı kayıt (iOS: Siri / Kısayollar "Cinch'e harcama ekle"; Android: bildirimdeki
+ * "Harcama yaz" yanıtı). Ana ekranın hızlı kayıt alanıyla aynı ayrıştırma: tutar, kategori, tarih, metinde adı
+ * geçen kart.
  */
 class SaveQuickEntry(
     private val parser: QuickEntryParser,
@@ -19,9 +21,14 @@ class SaveQuickEntry(
     private val cards: CardRepository,
     private val clock: LocalClock,
 ) {
-    /** Kaydedilen harcama; metinde tutar yoksa null (hiçbir şey kaydedilmez). */
-    suspend operator fun invoke(text: String): Expense? {
-        val parsed = parser.parse(text.trim(), clock.today(), cards = cards.all())
+    /**
+     * Kaydedilen harcama; metinde tutar yoksa null (hiçbir şey kaydedilmez).
+     *
+     * @param fallbackDate metinde tarih yoksa kullanılan gün; null = bugün.
+     */
+    suspend operator fun invoke(text: String, fallbackDate: LocalDate? = null): Expense? {
+        val today = clock.today()
+        val parsed = parser.parse(text.trim(), today, cards = cards.all(), fallbackDate = fallbackDate ?: today)
         val expense = parsed.toExpense()?.takeIf { it.grossAmount.minor > 0 } ?: return null
         val id = expenses.add(expense)
         return expense.copy(id = id)

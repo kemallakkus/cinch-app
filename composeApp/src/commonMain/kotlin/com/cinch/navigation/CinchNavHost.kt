@@ -22,6 +22,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -55,6 +57,7 @@ import com.cinch.ui.month.MonthWrapper
 import com.cinch.ui.progress.AchievementsWrapper
 import com.cinch.ui.receipt.ReceiptReviewWrapper
 import com.cinch.ui.savings.SavingsWrapper
+import com.cinch.ui.settings.NotificationSettingsWrapper
 import com.cinch.ui.settings.SettingsWrapper
 import com.cinch.ui.statement.StatementReviewWrapper
 import kotlinx.datetime.number
@@ -130,6 +133,20 @@ private fun MainTabs() {
             active.size > 1 -> active.removeAt(active.lastIndex)
             currentIndex != TopTab.TODAY.ordinal -> currentIndex = TopTab.TODAY.ordinal
         }
+    }
+
+    // Bildirimden ya da widget'tan gelen bağlantı: ilgili sekme, kökü ve üstüne ilgili ekran.
+    val link by DeepLinks.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(link) {
+        val url = link
+        if (url == null || url == DeepLinks.QUICK_ADD) return@LaunchedEffect // hızlı kayıt App'te katman olarak açılır
+        linkTarget(url)?.let { target ->
+            currentIndex = target.tab.ordinal
+            val tabStack = stacks.getValue(target.tab)
+            while (tabStack.size > 1) tabStack.removeAt(tabStack.lastIndex)
+            target.route?.let { tabStack.add(it) }
+        }
+        DeepLinks.consume()
     }
 
     val entryProvider = cinchEntries(
@@ -278,6 +295,12 @@ private fun cinchEntries(
     entry<CardEditRoute> { route ->
         CardEditWrapper(route = route, onDone = goBack, onDeleted = removeCardScreens, onBack = goBack)
     }
-    entry<SettingsRoute> { SettingsWrapper(onOpenBudget = { navigate(BudgetSetupRoute()) }) }
+    entry<SettingsRoute> {
+        SettingsWrapper(
+            onOpenBudget = { navigate(BudgetSetupRoute()) },
+            onOpenNotifications = { navigate(NotificationSettingsRoute) },
+        )
+    }
+    entry<NotificationSettingsRoute> { NotificationSettingsWrapper(onBack = goBack) }
     entry<BudgetSetupRoute> { route -> BudgetSetupWrapper(route = route, onDone = goBack, onBack = goBack) }
 }

@@ -29,7 +29,8 @@ cinch-app/
 |---|---|---|
 | `Money` / `MoneyFormatter` | Kuruş bazlı tutar (float hatasız), TR/EN biçim | `money/` |
 | `QuickEntryParser` | "195 market", "dün 120 su ekmek", "cuma 300 market", "625 ... yarısı geri geldi" → tutar/tarih/pay/kategori. Boşluksuz yazılan tutar da okunur ("40market", "195tl"; ayrı tutar yoksa, "3kg" gibi ölçüler hariç: `GluedAmount`). Gün adı en yakın geçmiş o günü verir ("geçen cuma" bugünü atlar); "pazar" yalnız "pazar günü" / "geçen pazar" ise tarihtir (yoksa semt pazarı) | `parser/` |
-| `Categorizer` + `KeywordDictionary` | Anahtar kelime sözlüğü + kullanıcı düzeltmelerinden öğrenme | `category/` |
+| `Categorizer` + `KeywordDictionary` | Anahtar kelime sözlüğü (dil paketinden) + kullanıcı düzeltmelerinden öğrenme | `category/` |
+| `LanguagePack` / `LanguagePacks` | Ayrıştırıcıların bütün kelimeleri tek yerde, dil dil: kategori sözlüğü, hızlı kayıt (bugün/dün/önceki gün, gün adları, "geçen", paylaşım ve iade kalıpları, para birimi ve ölçü ekleri), fiş (toplam etiketleri ve puanları, dışlananlar, KDV, son ödeme, mağaza adında atlananlar), banka ekranı (alan adları, ay adları), "Nereye gitti?" bağlaçları. Türkçe ve İngilizce var; `active(dil)` telefonun dilini önce koyup Türkçe ve İngilizceyle birleştirir: kullanıcı hangi dilde yazarsa yazsın anlaşılır, çakışan kelimede telefonun dili geçerli. Yeni dil = yeni paket, ayrıştırıcı koduna dokunulmaz | `language/` |
 | `BudgetEngine` | Haftalık sınır, günlük kalan pay, ay toplamı; paylaşımda yalnız kullanıcı payı sayılır | `budget/` |
 | `PayoffSimulator` | Kart kapanışı (~%4.9/ay faiz+vergi), taksit, esnek ödeme (Eminevim) | `debt/` |
 | `Reconciler` | Elle girilen güncel borç ile kayıt farkını bulur ("103 ₺ yazmayı unutmuşsun") | `reconcile/` |
@@ -60,7 +61,7 @@ cinch-app/
 | `SavingsRepository` | Kumbara hedefleri ve para hareketleri (ekleme artı, çekme eksi); hedef silinince hareketleri de silinir | `domain/repository/`, `data/SqlSavingsRepository.kt` |
 | `ObserveGamification` | Bütçe, son 120 günün harcamaları, kumbara, biten borçlar ve son yedekten seriler, rozet durumu, geçen haftanın artanı ve hedefler. Yan etkisiz; rozetleri kaydetmek ana ekran şeridinin işi | `gamification/` |
 | `PlanCoachWeek` | Bütçe, son 30 gün, kart hesap kesim günleri ve en büyük gelirin gününden `CoachRules` planını üretir | `coach/` |
-| `DataModule` / `DomainModule` / `PlatformModule` | Koin modülleri (annotation, `@Configuration`) | `di/` |
+| `DataModule` / `DomainModule` / `PlatformModule` | Koin modülleri (annotation, `@Configuration`); `DomainModule` telefonun dilinden (`deviceLanguageCode`) birleşik dil paketini kurup ayrıştırıcılara verir | `di/` |
 
 Koin **annotation tabanlı** ve DSL kullanılmıyor. Modülleri Koin compiler plugin topluyor, KSP gerekmiyor. Giriş noktası
 `composeApp/.../di/CinchKoinApp.kt` (`@KoinApplication`) + `StartKoin.doInitKoin()`. Android'de
@@ -116,7 +117,7 @@ sekme değişince ekran durumu korunur, alt menü yalnız sekme köklerinde gör
 | Fiş / fatura okuma | Hızlı kayıt alanındaki 📷: "Fiş ya da fatura tara" (ML Kit belge tarayıcı: kenar bulur, kırpar) ya da "Galeriden seç". Yazı telefonda okunur, fotoğraf saklanmaz, internete gitmez. Onay ekranında tutar, açıklama, kategori, tarih ve kart dolu gelir; kullanıcı kontrol edip kaydeder. Faturada eşleşen sabit gider seçili gelir ve "Bu ay"da ödendi işaretlenir (bu ay zaten ödendiyse uyarır). "Bu ay"daki "📷 Fatura" düğmesi de aynı akışı açar. iOS'ta VisionKit belge tarayıcı (simülatörde yoksa galeriye düşer), `PHPickerViewController` ve Vision metin tanıma (Türkçe destekleniyorsa tr-TR, yoksa en-US); konumlar ML Kit'teki gibi sol üst köşeden piksel olarak verilir, ekstre okuma da aynı yolu kullanır | `receipt/` (platform), `ui/receipt/` |
 | Nereye gitti? | "Bu ay"daki özet kartından açılır: halka grafik, geçen ayla kıyas, kategoriler (pay çubuğu, ↑/↓ değişim; dokun → o ayın o kategorideki kayıtları), en çok para giden kelimeler; ay ay gezilir | `ui/insights/` |
 | Bu ay | Gelir − sabit giderler − harcamalar − kumbaraya ayrılan ("🐷 Kumbaraya" satırı) = elinde kalan; Kumbara kartı; sonraki gelire kaç gün kaldığı; sabit giderler (yuvarlağa dokun → "ödendi", tutar düzeltilebilir; borçlarda ilerleme çubuğu, borca dokun → detay: ilerleme, bitiş tahmini, ödeme ekle/sil) ve gelirler, ekleme/düzenleme | `ui/month/` |
-| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu), verilerin nerede tutulduğu; **yedek al** (sistemin kaydetme penceresi: telefon, Drive…), **yedekten geri yükle** (önce içindekileri gösterip onay ister), **harcamaları Excel'e aktar** (CSV). Son yedek 30 günü geçince uyarı rengiyle; **ekran tanıtımlarını yeniden göster**. Yedek ve CSV iOS'ta sistemin dosya penceresiyle (Dosyalar, iCloud Drive…) | `ui/settings/`, `files/` (platform) |
+| Ayarlar | Haftalık bütçe, koç bildirimleri (izin durumu) ve **bildirim tercihleri** (sessiz saatler, günün payı saati, günde en fazla, gruplar), verilerin nerede tutulduğu; **yedek al** (sistemin kaydetme penceresi: telefon, Drive…), **yedekten geri yükle** (önce içindekileri gösterip onay ister), **harcamaları Excel'e aktar** (CSV). Son yedek 30 günü geçince uyarı rengiyle; **ekran tanıtımlarını yeniden göster**. Yedek ve CSV iOS'ta sistemin dosya penceresiyle (Dosyalar, iCloud Drive…) | `ui/settings/`, `files/` (platform) |
 | Hızlı kayıt | Alttaki alan: "195 market" yazdıkça tutar/kategori/tarih önizlenir; kategori düzeltilirse kelime öğrenilir. Kart adı geçerse ("195 market qnb") harcama o karta bağlanır, çipten değiştirilir. Tarih "dün", "cuma" yazınca değişir; 📅 çipinden takvimle de seçilir | `ui/home/QuickEntryBar.kt` |
 | Kartlar | Kart listesi; ekleme/düzenleme: **kredi kartı** (ad, hesap kesim günü, ödenmemiş eski borç, aylık faiz) ya da **banka kartı** (yalnız ad: ekstre, borç, faiz yok; hareketlerden eksik harcama bulma için). Silince harcamalar nakit kalır | `ui/cards/Cards*`, `CardEdit*` |
 | Para takvimi | "Bu ay"daki "📅 Para takvimi": hesaptaki parayı yazınca "Maaşa (15 Kas) kadar yetiyor, maaştan önceki gün ~3.200 ₺ kalır" ya da "27 Eki'de eksiye düşüyorsun; günde ~300 ₺ az harcarsan yetiyor". Altında hareketli günler ve gün sonu bakiyesi; ekstresi okunmamış kredi kartı varsa uyarır | `ui/cashflow/` |
@@ -183,6 +184,22 @@ yeni haftaya taşınmaz.
 | Uygulama açılmazsa | Günlük `CoachReplanWorker` planı ileri taşır | Plan son açılıştaki haliyle kalır (7 gün) |
 | İzin | Android 13+ `POST_NOTIFICATIONS`; bir kez sorulur, sonra ayarlara yönlendirir | `requestAuthorization`; reddedilince ayarlara yönlendirir |
 
+**Tercihler** (Ayarlar → Bildirim tercihleri, `NotificationPreferencesStore`): sessiz saatler (bu saatlere düşen
+bildirim sessiz saat bitişine kayar; kapatılabilir), "Günün payı" saati, günde en fazla 1–4 bildirim ve sekiz grup
+(günün payı, kayıt hatırlatması, sınır uyarıları, haftalık kapanış ve kumbara, seri ve alışkanlıklar, ödeme günleri,
+maaş günü, yedek) tek tek aç/kapa. Kapatılan grup günlük sayıya girmez, yerine açık olanlar gelir. Tercih değişince
+plan hemen yeniden kurulur (`CoachNotificationSync` tercih akışını izler).
+
+**Dokununca ilgili ekran** (`NotificationType.link`, `navigation/DeepLinks.kt`): kumbara → Kumbara, kart son
+ödemesi ve ekstre günü → Kartlar, sabit gider ve maaş → Bu ay, kategori/alışkanlık uyarısı → Nereye gitti?, seri →
+Başarılar, yedek → Ayarlar, "dün kayıt yoktu" → hızlı kayıt alanı. Android'de bildirim `MainActivity`'yi bağlantıyla
+açar (uygulama açıksa `onNewIntent`), iOS'ta bağlantı bildirimin `userInfo`sunda, `IosNotificationTaps` delegesi
+açar (uygulama öndeyken gelen bildirim de gösterilir).
+
+**Bildirimden kayıt (Android):** "Günün payı" ve "Dün kayıt yoktu" bildirimlerinin altında "Harcama yaz" yanıt
+alanı: "195 market" yazıp gönderince uygulama açılmadan kaydedilir, bildirim "Kaydedildi ✓ 195,00 ₺ 🛒 Market"
+olur (`QuickReplyReceiver` → `SaveQuickEntry`). "Dün kayıt yoktu"ya tarih yazmadan verilen yanıt düne yazılır.
+
 İzin ana ekrandaki karttan, ne işe yarayacağı anlatıldıktan sonra istenir ("Şimdi değil" kartı 7 gün gizler).
 Küçük tercihler (`KeyValueStore`) Android'de SharedPreferences, iOS'ta NSUserDefaults'ta tutulur.
 
@@ -219,9 +236,9 @@ Koin 4.2.2 (compiler plugin 1.2.1) · Navigation 3 1.2.0-rc01 · WorkManager 2.1
 
 ## Sonraki adımlar
 
+- Ekran metinlerini Compose kaynak dosyalarına taşıma (`values/strings.xml`, `values-en/strings.xml`); şimdilik arayüz Türkçe, ayrıştırıcılar Türkçe + İngilizce
+- Fatura eşlemedeki kurum adları (`BillMatcher`: Enerjisa, İGDAŞ…) dile değil ülkeye bağlı; başka ülke için ülke paketi
 - Yuvarlak hatlı özel yazı tipi (ör. Nunito)
-- Bildirim saatlerini (sessiz saatler) saat seçiciyle ayarlama
-- Bildirim ayarları (sessiz saatler, günlük sayı, türleri aç/kapa); bildirime dokununca ilgili ekrana gitme
 - Abonelik (Play Billing + StoreKit, doğrulama RevenueCat), yedekleme (Drive / iCloud)
 - iOS widget'ının gece kendi güncellenmesi (BGAppRefreshTask ile günlük payı yeniden yazma)
 - Kumbara hedefine tarih koyup "haftada ne kadar atmalısın" önerisi

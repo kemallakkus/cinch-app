@@ -1,5 +1,6 @@
 package com.cinch.notifications
 
+import com.cinch.navigation.DeepLinks
 import com.cinch.shared.coach.CoachNotification
 import com.cinch.shared.coach.NotificationType
 
@@ -22,6 +23,19 @@ const val COACH_KEY_PREFIX = "coach-"
  */
 fun CoachNotification.scheduleKey(): String =
     "$COACH_KEY_PREFIX$date-$type-$time-${message.hashCode().toUInt().toString(16)}"
+
+/** Bildirime dokununca açılan yer: "dün kayıt yoktu" hızlı kayıt alanını, kumbara bildirimi Kumbara'yı açar. */
+val NotificationType.link: String
+    get() = when (this) {
+        NotificationType.FORGOT_LOG -> DeepLinks.QUICK_ADD
+        NotificationType.MIDDAY_REMAINING, NotificationType.APPROACHING_LIMIT, NotificationType.WEEKLY_CLOSING -> DeepLinks.HOME
+        NotificationType.HABIT_ALERT, NotificationType.CATEGORY_SPIKE -> DeepLinks.INSIGHTS
+        NotificationType.STREAK -> DeepLinks.ACHIEVEMENTS
+        NotificationType.STATEMENT_DUE, NotificationType.CARD_DUE -> DeepLinks.CARDS
+        NotificationType.SALARY, NotificationType.FIXED_DUE, NotificationType.FIXED_UNPAID -> DeepLinks.MONTH
+        NotificationType.BACKUP_REMINDER -> DeepLinks.SETTINGS
+        NotificationType.WEEK_LEFTOVER -> DeepLinks.SAVINGS
+    }
 
 /** Bildirim başlığı; gövde [CoachNotification.message]. */
 val NotificationType.title: String

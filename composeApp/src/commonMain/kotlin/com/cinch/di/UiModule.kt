@@ -12,6 +12,7 @@ import com.cinch.navigation.InsightsRoute
 import com.cinch.navigation.ReceiptReviewRoute
 import com.cinch.navigation.StatementReviewRoute
 import com.cinch.notifications.NotificationAccessChecker
+import com.cinch.shared.coach.NotificationPreferencesStore
 import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.backup.Backups
 import com.cinch.shared.budget.ObserveBudgetStatus
@@ -57,6 +58,7 @@ import com.cinch.ui.savings.SavingsViewModel
 import com.cinch.ui.receipt.ReceiptReviewViewModel
 import com.cinch.ui.onboarding.CoachMarkProgress
 import com.cinch.ui.root.RootViewModel
+import com.cinch.ui.settings.NotificationSettingsViewModel
 import com.cinch.ui.settings.SettingsViewModel
 import com.cinch.ui.statement.StatementReviewViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -76,6 +78,10 @@ class UiModule {
     fun rootViewModel(budgets: BudgetRepository, prefs: KeyValueStore): RootViewModel = RootViewModel(budgets, prefs)
 
     /** Ekran tanıtım balonlarının "görüldü" kaydı; Ayarlar'dan sıfırlanınca açık ekranlar da duysun diye tek. */
+    @KoinViewModel
+    fun notificationSettingsViewModel(store: NotificationPreferencesStore): NotificationSettingsViewModel =
+        NotificationSettingsViewModel(store)
+
     @Single
     fun coachMarkProgress(prefs: KeyValueStore): CoachMarkProgress = CoachMarkProgress(prefs)
 

@@ -8,7 +8,9 @@ import com.cinch.shared.time.LocalClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -37,6 +39,8 @@ class CoachNotificationSync(
     private val cards: CardRepository,
     private val clock: LocalClock,
     private val scope: CoroutineScope,
+    /** Bildirim tercihleri değişince plan yeniden kurulsun (sessiz saat, kapatılan grup…). */
+    private val preferenceChanges: Flow<Unit> = emptyFlow(),
 ) {
 
     private val refreshRequests = MutableSharedFlow<Unit>(
@@ -54,6 +58,7 @@ class CoachNotificationSync(
             // Aralığın önemi yok: SQLDelight tablo değişince sorguyu yeniden çalıştırıp yayar.
             expenses.observeBetween(today.minus(DatePeriod(days = 60)), today.plus(DatePeriod(days = 60))).map { },
             refreshRequests,
+            preferenceChanges,
         )
         scope.launch {
             // Açılıştaki ilk yayınlar ve art arda kayıtlar tek eşitlemeye iner.

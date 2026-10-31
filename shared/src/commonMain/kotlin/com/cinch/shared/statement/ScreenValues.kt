@@ -1,5 +1,6 @@
 package com.cinch.shared.statement
 
+import com.cinch.shared.language.LanguagePacks
 import com.cinch.shared.category.TextNormalizer
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
@@ -89,15 +90,25 @@ internal object ScreenMoney {
  * Yıl yazmıyorsa [anchor]'a (okunduğu gün) en yakın yıl seçilir: Ekim'de okunan "6 Ekim" bu yılın 6 Ekim'i.
  */
 internal object ScreenDate {
+    private val turkish = ScreenDateReader(LanguagePacks.TURKISH.months)
+
+    fun parse(text: String, anchor: LocalDate): LocalDate? = turkish.parse(text, anchor)
+
+    fun findAll(text: String, anchor: LocalDate): List<ScreenDateReader.Found> = turkish.findAll(text, anchor)
+}
+
+/**
+ * [ScreenDate]'in dile göre olanı: [months] Ocak'tan Aralık'a ay adları (dil paketinden, birden çok dil
+ * birleşmiş olabilir: "6 Ekim" de "Oct 6" değil ama "6 Oct" de okunur).
+ */
+internal class ScreenDateReader(private val months: List<List<String>>) {
 
     private val NUMERIC = Regex("(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4}|\\d{2})(?!\\d)")
-    private val MONTHS = listOf(
-        listOf("ocak", "oca"), listOf("subat", "sub"), listOf("mart", "mar"), listOf("nisan", "nis"),
-        listOf("mayis", "may"), listOf("haziran", "haz"), listOf("temmuz", "tem"), listOf("agustos", "agu"),
-        listOf("eylul", "eyl"), listOf("ekim", "eki"), listOf("kasim", "kas"), listOf("aralik", "ara"),
-    )
+
+    // Uzun adlar önce: "mart" "mar"dan önce denensin.
     private val NAMED = Regex(
-        "(\\d{1,2})\\s*(" + MONTHS.flatten().joinToString("|") + ")(?![a-z])\\.?(?:\\s+(\\d{4}))?",
+        "(\\d{1,2})\\s*(" + months.flatten().sortedByDescending { it.length }.joinToString("|") +
+            ")(?![a-z])\\.?(?:\\s+(\\d{4}))?",
     )
 
     /** Tarih ve metindeki yeri; yılı yazılı mı (işlem satırlarında tam tarih aranır). */
@@ -113,7 +124,7 @@ internal object ScreenDate {
                 ?.let { Found(it, m.range.first, hasYear = true) }
         }
         val named = NAMED.findAll(folded).mapNotNull { m ->
-            val month = MONTHS.indexOfFirst { m.groupValues[2] in it } + 1
+            val month = months.indexOfFirst { m.groupValues[2] in it } + 1
             val year = m.groupValues[3].takeIf { it.isNotEmpty() }?.toInt()
             resolve(m.groupValues[1].toInt(), month, year, anchor)?.let { Found(it, m.range.first, hasYear = year != null) }
         }

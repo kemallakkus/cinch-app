@@ -1,5 +1,8 @@
 package com.cinch.di
 
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.drop
+import com.cinch.shared.coach.NotificationPreferencesStore
 import com.cinch.notifications.CoachNotificationSync
 import com.cinch.notifications.NotificationAccessChecker
 import com.cinch.notifications.NotificationScheduler
@@ -41,8 +44,13 @@ class NotificationsModule {
         cards: CardRepository,
         clock: LocalClock,
         @Named("appScope") scope: CoroutineScope,
+        preferences: NotificationPreferencesStore,
     ): CoachNotificationSync =
-        CoachNotificationSync(planner, scheduler, budgets, expenses, cards, clock, scope).also { it.start() }
+        CoachNotificationSync(
+            planner, scheduler, budgets, expenses, cards, clock, scope,
+            // İlk değer atlanır: açılıştaki eşitlemeyi diğer kaynaklar zaten tetikliyor.
+            preferenceChanges = preferences.preferences.drop(1).map { },
+        ).also { it.start() }
 
     @KoinViewModel
     fun notificationPromptViewModel(

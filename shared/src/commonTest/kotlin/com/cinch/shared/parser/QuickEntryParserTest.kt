@@ -88,6 +88,14 @@ class QuickEntryParserTest {
     }
 
     @Test
+    fun fallbackDate_onlyWhenTextHasNoDate() {
+        val yesterday = LocalDate(2025, 1, 14)
+        assertEquals(yesterday, parser.parse("120 taksi", today, fallbackDate = yesterday).date)
+        assertEquals(today, parser.parse("bugün 50 kahve", today, fallbackDate = yesterday).date) // yazılan tarih geçerli
+        assertEquals(LocalDate(2025, 1, 10), parser.parse("cuma 80 market", today, fallbackDate = yesterday).date)
+    }
+
+    @Test
     fun noAmount() {
         val r = parser.parse("market", today)
         assertNull(r.grossAmount)

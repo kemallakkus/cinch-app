@@ -27,6 +27,8 @@ import kotlinx.datetime.plus
  * 7 günün bildirim planını üretir. Her kayıttan sonra yeniden çağrılması beklenir.
  *
  * @param lookbackDays alışkanlık ve seri kuralları için geriye bakılan gün sayısı (bugün dahil).
+ * @param preferences kullanıcının bildirim tercihleri (sessiz saatler, günün payı saati, günde en fazla, kapalı
+ *   gruplar); null ise [invoke]'a verilen yapılandırma olduğu gibi kullanılır.
  */
 class PlanCoachWeek(
     private val budgets: BudgetRepository,
@@ -39,6 +41,7 @@ class PlanCoachWeek(
     private val engine: BudgetEngine,
     private val rules: CoachRules,
     private val lookbackDays: Int = 30,
+    private val preferences: NotificationPreferencesStore? = null,
 ) {
 
     /**
@@ -52,15 +55,18 @@ class PlanCoachWeek(
      */
     suspend operator fun invoke(today: LocalDate, config: CoachConfig = CoachConfig()): List<CoachNotification> {
         val budget = budgets.get() ?: return emptyList()
+        val prefs = preferences?.current
         // Haftalık kapanış günü bütçenin hafta başlangıcıyla aynı olmalı.
-        val cfg = config.copy(weekStart = budget.weekStart)
+        val cfg = (prefs?.applyTo(config) ?: config).copy(weekStart = budget.weekStart)
 
         val fresh = rules.candidates(input(budget, today), cfg)
         val carried = CARRIED_LEADS.flatMap { lead ->
             rules.candidates(input(budget, today.minusDays(lead)), cfg)
                 .filter { it.type.leadDays == lead && it.date == today }
         }
-        return rules.applyConstraints(fresh + carried, cfg)
+        // Kapatılan gruplar günlük sayıya girmeden düşer: yerlerine açık olanlar gelir.
+        val allowed = (fresh + carried).filter { prefs?.allows(it.type) ?: true }
+        return rules.applyConstraints(allowed, cfg)
     }
 
     /** [day] gününün gözünden kural girdisi: o güne kadarki harcamalar, o haftanın durumu. */

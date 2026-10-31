@@ -38,6 +38,10 @@ data object MonthRoute : CinchRoute
 @Serializable
 data object SettingsRoute : CinchRoute
 
+/** Bildirim tercihleri: sessiz saatler, günde en fazla, türler. */
+@Serializable
+data object NotificationSettingsRoute : CinchRoute
+
 /** @param incomeId düzenlenecek gelir; null ise yeni gelir. */
 @Serializable
 data class IncomeEditRoute(val incomeId: Long? = null) : CinchRoute

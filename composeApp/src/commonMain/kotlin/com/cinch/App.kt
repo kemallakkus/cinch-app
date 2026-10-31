@@ -42,13 +42,11 @@ fun App() {
             Box(Modifier.fillMaxSize()) {
                 CinchNavHost(start = start, onIntroFinished = viewModel::introFinished)
 
-                // iOS widget'ındaki "+ Harcama": uygulamanın üstünde yalnız hızlı kayıt alanı. Bütçe kurulmadan anlamsız;
-                // diğer bağlantılar ("cinch://home") için uygulamanın açılması yeter.
+                // Widget'taki "+ Harcama" ve "dün kayıt yoktu" bildirimi: uygulamanın üstünde yalnız hızlı kayıt alanı.
+                // Bütçe kurulmadan anlamsız. Diğer bağlantıları (sekme, ekran) ana sekme yapısı işler.
                 val link by DeepLinks.pending.collectAsStateWithLifecycle()
-                if (link == DeepLinks.QUICK_ADD && start == HomeRoute) {
-                    QuickAddSheet(onClose = DeepLinks::consume)
-                } else if (link != null) {
-                    LaunchedEffect(link) { DeepLinks.consume() }
+                if (link == DeepLinks.QUICK_ADD) {
+                    if (start == HomeRoute) QuickAddSheet(onClose = DeepLinks::consume) else LaunchedEffect(link) { DeepLinks.consume() }
                 }
             }
         }

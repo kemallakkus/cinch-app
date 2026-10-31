@@ -44,6 +44,8 @@ class IosNotificationScheduler : NotificationScheduler {
             setTitle(notification.type.title)
             setBody(notification.message)
             setSound(UNNotificationSound.defaultSound())
+            // Dokununca açılacak ekran (IosNotificationTaps).
+            setUserInfo(mapOf<Any?, Any?>(IosNotificationTaps.LINK_KEY to notification.type.link))
         }
         // Saat dilimi verilmez: tetikleyici cihazın o anki yerel saatine göre çalışır.
         val components = NSDateComponents().apply {

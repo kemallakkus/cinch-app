@@ -1,6 +1,8 @@
 package com.cinch.shared.statement
 
 import com.cinch.shared.category.TextNormalizer
+import com.cinch.shared.language.LanguagePack
+import com.cinch.shared.language.LanguagePacks
 import com.cinch.shared.money.Currency
 import com.cinch.shared.money.Money
 import com.cinch.shared.receipt.OcrLine
@@ -60,8 +62,8 @@ data class StatementDraft(
  * Bankaya özel şablon kullanmadan kart ekranı okur. İki fikir:
  *
  * 1. **Ortak etiketler.** Son ödeme tarihi, hesap kesim tarihi, ekstre borcu, asgari ödeme ekstrede bulunması
- *    gereken kalemler; bankalar bunlara benzer adlar verir. Eş anlamlılar [Field] listesinde; yeni banka
- *    çoğunlukla buraya bir kelime demektir.
+ *    gereken kalemler; bankalar bunlara benzer adlar verir. Eş anlamlılar dil paketinde
+ *    ([LanguagePack.statement]); yeni banka çoğunlukla oraya bir kelime, yeni dil yeni bir paket demektir.
  * 2. **Değer etiketin yanında ya da altında.** Önce etiketin kendi satırına ("Ekstre kesim tarihi: 28.09.2026"),
  *    sonra aynı hizada sağına ("Toplam Borç ....... 62,310.69 TL"), sonra hemen altına, aynı sütunda bakılır
  *    (QNB: "Kalan Ekstre Borcu" ve "Son Ödeme Tarihi" yan yana, değerleri altlarında).
@@ -69,11 +71,17 @@ data class StatementDraft(
  * Girdi başka bir telefonla çekilmiş ekran fotoğrafıdır (banka uygulamaları ekran görüntüsünü engeller): arkadaki
  * monitör ya da klavyedeki yazılar etikete bağlanmadıkça yok sayılır, hafif eğiklik tolere edilir.
  */
-class StatementReader(private val currency: Currency = Currency.TRY) {
+class StatementReader(
+    private val currency: Currency = Currency.TRY,
+    language: LanguagePack = LanguagePacks.TURKISH,
+) {
+
+    private val words = language.statement
+    private val screenDate = ScreenDateReader(language.months)
 
     fun read(scan: OcrScan, today: LocalDate): StatementDraft {
-        val money = mutableMapOf<Field, MutableList<Money>>()
-        val dates = mutableMapOf<Field, MutableList<LocalDate>>()
+        val money = mutableMapOf<StatementField, MutableList<Money>>()
+        val dates = mutableMapOf<StatementField, MutableList<LocalDate>>()
         val last4 = linkedSetOf<String>()
         val transactions = mutableListOf<StatementTransaction>()
 
@@ -84,23 +92,23 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
 
             for ((i, label) in labels) {
                 when (label.field.kind) {
-                    Kind.MONEY -> findValue(lines, i, label, labels, Direction.ANY) { parseMoney(it) }?.let { (value, at) ->
+                    StatementValueKind.MONEY -> findValue(lines, i, label, labels, Direction.ANY) { parseMoney(it) }?.let { (value, at) ->
                         money.getOrPut(label.field) { mutableListOf() } += value
                         used += at
                     }
-                    Kind.DATE -> findValue(lines, i, label, labels, Direction.ANY, joinBelow = true) { ScreenDate.parse(it, today) }
+                    StatementValueKind.DATE -> findValue(lines, i, label, labels, Direction.ANY, joinBelow = true) { screenDate.parse(it, today) }
                         ?.let { (value, at) ->
                             dates.getOrPut(label.field) { mutableListOf() } += value
                             used += at
                         }
                     // Akbank: "Son gün: 8 Ekim" ve altında ödenecek tutar.
-                    Kind.DATE_THEN_MONEY -> {
-                        findValue(lines, i, label, labels, Direction.SAME_ROW) { ScreenDate.parse(it, today) }?.let { (value, at) ->
-                            dates.getOrPut(Field.DUE_DATE) { mutableListOf() } += value
+                    StatementValueKind.DATE_THEN_MONEY -> {
+                        findValue(lines, i, label, labels, Direction.SAME_ROW) { screenDate.parse(it, today) }?.let { (value, at) ->
+                            dates.getOrPut(StatementField.DUE_DATE) { mutableListOf() } += value
                             used += at
                         }
                         findValue(lines, i, label, labels, Direction.BELOW) { parseMoney(it) }?.let { (value, at) ->
-                            money.getOrPut(Field.STATEMENT_BALANCE) { mutableListOf() } += value
+                            money.getOrPut(StatementField.STATEMENT_BALANCE) { mutableListOf() } += value
                             used += at
                         }
                     }
@@ -110,27 +118,27 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
             transactions += readTransactions(lines, used, today)
         }
 
-        val due = dates[Field.DUE_DATE]?.firstOrNull()
+        val due = dates[StatementField.DUE_DATE]?.firstOrNull()
         // QNB'nin tarih şeridinde iki "Ekstre Kesim Tarihi" var (geçen ve gelecek): son ödemeden öncesi bu ekstre.
-        val cuts = dates[Field.STATEMENT_DATE].orEmpty().distinct().sorted()
+        val cuts = dates[StatementField.STATEMENT_DATE].orEmpty().distinct().sorted()
         val statementDate = if (due != null) cuts.lastOrNull { it < due } ?: cuts.firstOrNull() else cuts.lastOrNull { it <= today } ?: cuts.firstOrNull()
-        val nextStatement = dates[Field.NEXT_STATEMENT]?.firstOrNull()
+        val nextStatement = dates[StatementField.NEXT_STATEMENT]?.firstOrNull()
             ?: cuts.firstOrNull { statementDate != null && it > statementDate }
 
         return StatementDraft(
             last4 = last4.singleOrNull(),
             last4Seen = last4.toList(),
-            statementBalance = money[Field.STATEMENT_BALANCE]?.firstOrNull(),
-            minimumPayment = money[Field.MINIMUM_PAYMENT]?.firstOrNull(),
+            statementBalance = money[StatementField.STATEMENT_BALANCE]?.firstOrNull(),
+            minimumPayment = money[StatementField.MINIMUM_PAYMENT]?.firstOrNull(),
             dueDate = due,
             statementDate = statementDate,
             nextStatementDate = nextStatement,
-            nextDueDate = dates[Field.NEXT_DUE]?.firstOrNull(),
-            periodSpending = money[Field.PERIOD_SPENDING]?.firstOrNull(),
-            futureInstallments = money[Field.FUTURE_INSTALLMENTS]?.firstOrNull(),
-            totalDebt = money[Field.TOTAL_DEBT]?.firstOrNull(),
-            creditLimit = money[Field.CREDIT_LIMIT]?.firstOrNull(),
-            availableLimit = money[Field.AVAILABLE_LIMIT]?.firstOrNull(),
+            nextDueDate = dates[StatementField.NEXT_DUE]?.firstOrNull(),
+            periodSpending = money[StatementField.PERIOD_SPENDING]?.firstOrNull(),
+            futureInstallments = money[StatementField.FUTURE_INSTALLMENTS]?.firstOrNull(),
+            totalDebt = money[StatementField.TOTAL_DEBT]?.firstOrNull(),
+            creditLimit = money[StatementField.CREDIT_LIMIT]?.firstOrNull(),
+            availableLimit = money[StatementField.AVAILABLE_LIMIT]?.firstOrNull(),
             transactions = transactions.distinctBy { Triple(it.date, it.amount, TextNormalizer.normalize(it.description)) },
             rows = scan.text.lines().filter { it.isNotBlank() },
         )
@@ -140,32 +148,8 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
 
     // ───────────────────────── Etiketler ─────────────────────────
 
-    private enum class Kind { MONEY, DATE, DATE_THEN_MONEY }
-
-    /** Okunan alanlar ve ekranlarda geçen adları (Türkçe harfler indirgenmiş, küçük harf). */
-    private enum class Field(val kind: Kind, val phrases: List<String>, val excludes: List<String> = emptyList()) {
-        STATEMENT_BALANCE(
-            Kind.MONEY,
-            listOf(
-                "kalan ekstre borcu", "ekstre borcu", "kalan donem borcu", "donem borcu", "hesap ozeti borcu",
-                "ekstreye yansiyan islemler", "ekstre tutari", "odenecek tutar",
-            ),
-        ),
-        MINIMUM_PAYMENT(Kind.MONEY, listOf("asgari odeme tutari", "kalan asgari odeme", "asgari odeme", "asgari tutar")),
-        DUE_DATE(Kind.DATE, listOf("son odeme tarihi", "son odeme gunu", "son odeme")),
-        SON_GUN(Kind.DATE_THEN_MONEY, listOf("son gun")),
-        NEXT_DUE(Kind.DATE, listOf("sonraki son odeme")),
-        STATEMENT_DATE(Kind.DATE, listOf("ekstre kesim tarihi", "hesap kesim tarihi", "ekstre kesim", "hesap kesim", "kesim tarihi")),
-        NEXT_STATEMENT(Kind.DATE, listOf("sonraki ekstre kesim", "sonraki hesap kesim", "sonraki kesim")),
-        PERIOD_SPENDING(Kind.MONEY, listOf("donem ici harcama", "donem ici islemler", "guncel donem harcama")),
-        FUTURE_INSTALLMENTS(Kind.MONEY, listOf("gelecek donem taksit", "kalan taksitler")),
-        TOTAL_DEBT(Kind.MONEY, listOf("toplam borc", "guncel borc", "toplam kart borcu")),
-        CREDIT_LIMIT(Kind.MONEY, listOf("kart limiti", "toplam limit", "kredi limiti"), excludes = listOf("sanal", "internet")),
-        AVAILABLE_LIMIT(Kind.MONEY, listOf("kullanilabilir limit"), excludes = listOf("sanal", "internet")),
-    }
-
     /** @param end etiketin satırda bittiği yer; değer aynı satırdaysa buradan sonrası. */
-    private class Label(val field: Field, val end: Int)
+    private class Label(val field: StatementField, val end: Int)
 
     /**
      * En uzun eşleşen ad kazanır: "Sonraki son ödeme" bir "son ödeme" değildir. Uzun cümleler etiket sayılmaz
@@ -175,9 +159,9 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
         val folded = TextNormalizer.fold(line.text)
         var best: Label? = null
         var bestLength = 0
-        for (field in Field.entries) {
-            if (field.excludes.any { it in folded }) continue
-            for (phrase in field.phrases) {
+        for (field in StatementField.entries) {
+            if (words.excludes[field].orEmpty().any { it in folded }) continue
+            for (phrase in words.labels[field].orEmpty()) {
                 val at = folded.indexOf(phrase)
                 if (at < 0 || phrase.length <= bestLength) continue
                 if (folded.trim().length > phrase.length + MAX_LABEL_EXTRA) continue
@@ -262,7 +246,7 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
         lines.indices.mapNotNull { j ->
             if (j in used) return@mapNotNull null
             val dateLine = lines[j]
-            val date = ScreenDate.findAll(dateLine.text, today).firstOrNull { it.hasYear }?.date ?: return@mapNotNull null
+            val date = screenDate.findAll(dateLine.text, today).firstOrNull { it.hasYear }?.date ?: return@mapNotNull null
 
             val descIndex = lines.indices
                 .filter { k ->
@@ -270,11 +254,11 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
                     k != j && k !in used && d.bottom <= dateLine.top + dateLine.height * 0.5f &&
                         dateLine.top - d.bottom <= dateLine.height * 2 &&
                         d.right >= dateLine.left && d.left <= dateLine.right &&
-                        d.text.count { it.isLetter() } >= 3 && ScreenDate.findAll(d.text, today).isEmpty()
+                        d.text.count { it.isLetter() } >= 3 && screenDate.findAll(d.text, today).isEmpty()
                 }
                 .maxByOrNull { lines[it].bottom } ?: return@mapNotNull null
             val desc = lines[descIndex]
-            if (TOTAL_WORDS.any { it in TextNormalizer.fold(desc.text) }) return@mapNotNull null
+            if (words.totalWords.any { it in TextNormalizer.fold(desc.text) }) return@mapNotNull null
 
             // Tutar sağ sütunda, açıklama ile tarih satırlarının hizasında.
             val top = desc.top - desc.height * 0.5f
@@ -300,7 +284,7 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
     private fun installmentIn(text: String): Installment? {
         val folded = TextNormalizer.fold(text)
         val match = INSTALLMENT.find(folded) ?: return null
-        if ("taksit" !in folded && !INSTALLMENT_IN_PARENS.containsMatchIn(text)) return null
+        if (words.installmentWords.none { it in folded } && !INSTALLMENT_IN_PARENS.containsMatchIn(text)) return null
         val number = match.groupValues[1].toInt()
         val total = match.groupValues[2].toInt()
         return if (total in 2..60 && number in 1..total) Installment(number, total) else null
@@ -324,7 +308,6 @@ class StatementReader(private val currency: Currency = Currency.TRY) {
         val LAST4 = Regex("(?:[•*·∙●.]{3,}|[xX]{3,})\\s*(\\d{4})(?!\\d)")
         val INSTALLMENT = Regex("(\\d{1,2})\\s*/\\s*(\\d{1,2})")
         val INSTALLMENT_IN_PARENS = Regex("\\(\\s*\\d{1,2}\\s*/\\s*\\d{1,2}\\s*\\)")
-        val TOTAL_WORDS = listOf("toplam", "kullanilabilir", "limit")
     }
 }
 

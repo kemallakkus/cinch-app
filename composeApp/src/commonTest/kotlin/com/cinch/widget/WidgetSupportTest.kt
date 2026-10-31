@@ -87,6 +87,11 @@ class WidgetSupportTest {
         assertEquals(today, stored.date)
         assertTrue(SaveQuickEntry.message("195 market qnb", saved).startsWith("Kaydedildi: ${tl(195).display()}"))
 
+        // Bildirimdeki "dün kayıt yoktu"ya yanıt: tarih yazılmadıysa dün.
+        val yesterday = LocalDate(2025, 1, 14)
+        assertEquals(yesterday, save("40 taksi", fallbackDate = yesterday)?.date)
+        expenses.all.value = expenses.all.value.filterNot { it.date == yesterday }
+
         assertNull(save("market"))
         assertEquals(1, expenses.all.value.size) // tutarsız metin kaydedilmez
         assertTrue("tutar bulamadım" in SaveQuickEntry.message("market", null))

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
 import androidx.compose.material.icons.outlined.TableChart
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
@@ -51,6 +52,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun SettingsWrapper(
     onOpenBudget: () -> Unit,
+    onOpenNotifications: () -> Unit,
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -81,6 +83,7 @@ fun SettingsWrapper(
     SettingsScreen(
         state = state,
         onOpenBudget = onOpenBudget,
+        onOpenNotifications = onOpenNotifications,
         onEvent = viewModel::onEvent,
         backupSupported = files.isSupported,
         snackbarHostState = snackbarHostState,
@@ -94,6 +97,7 @@ fun SettingsScreen(
     state: SettingsState,
     onOpenBudget: () -> Unit,
     onEvent: (SettingsEvent) -> Unit,
+    onOpenNotifications: () -> Unit = {},
     backupSupported: Boolean = true,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
@@ -119,6 +123,12 @@ fun SettingsScreen(
                 leadingContent = { Icon(Icons.Outlined.Notifications, contentDescription = null) },
                 headlineContent = { Text("Koç bildirimleri") },
                 supportingContent = { Text(notificationsLabel(state.notifications)) },
+            )
+            ListItem(
+                modifier = Modifier.clickable(onClick = onOpenNotifications),
+                leadingContent = { Icon(Icons.Outlined.Tune, contentDescription = null) },
+                headlineContent = { Text("Bildirim tercihleri") },
+                supportingContent = { Text("Sessiz saatler, günde en fazla kaç bildirim, hangi bildirimler") },
             )
             HorizontalDivider()
             ListItem(

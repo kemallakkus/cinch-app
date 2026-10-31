@@ -19,6 +19,11 @@
         </receiver>
 
         <!-- Widget'tan açılan küçük hızlı kayıt penceresi; uygulamanın ana ekranını açmaz. -->
+        <!-- Bildirimdeki "Harcama yaz" yanıtı: uygulamayı açmadan kayıt. -->
+        <receiver
+            android:name="com.cinch.notifications.QuickReplyReceiver"
+            android:exported="false" />
+
         <activity
             android:name="com.cinch.widget.QuickAddActivity"
             android:excludeFromRecents="true"
