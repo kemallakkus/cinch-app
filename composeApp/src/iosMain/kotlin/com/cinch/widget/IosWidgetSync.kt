@@ -5,6 +5,7 @@ import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.domain.repository.BudgetRepository
 import com.cinch.shared.domain.repository.CardRepository
 import com.cinch.shared.domain.repository.ExpenseRepository
+import com.cinch.shared.domain.repository.FixedExpenseRepository
 import com.cinch.shared.gamification.ObserveGamification
 import com.cinch.shared.parser.QuickEntryParser
 import com.cinch.shared.time.LocalClock
@@ -82,6 +83,7 @@ object QuickAddBridge {
             expenses = koin.get<ExpenseRepository>(),
             cards = koin.get<CardRepository>(),
             clock = koin.get<LocalClock>(),
+            fixedExpenses = koin.get<FixedExpenseRepository>(),
         ).invoke(text)
         if (saved != null) IosWidgetSync.publish()
         return SaveQuickEntry.message(text, saved)

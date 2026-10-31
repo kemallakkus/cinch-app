@@ -1,5 +1,11 @@
 package com.cinch.shared.coach
 
+import kotlinx.datetime.minus
+import com.cinch.shared.budget.MonthRecaps
+import com.cinch.shared.budget.MonthRecap
+import com.cinch.shared.recurring.RecurringPayments
+import com.cinch.shared.recurring.RecurringPayment
+import com.cinch.shared.recurring.RecurringDismissals
 import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.discretionary
@@ -42,6 +48,8 @@ class PlanCoachWeek(
     private val rules: CoachRules,
     private val lookbackDays: Int = 30,
     private val preferences: NotificationPreferencesStore? = null,
+    /** "Abonelik değil" denenler; null = hiçbiri. */
+    private val dismissals: RecurringDismissals? = null,
 ) {
 
     /**
@@ -59,7 +67,9 @@ class PlanCoachWeek(
         // Haftalık kapanış günü bütçenin hafta başlangıcıyla aynı olmalı.
         val cfg = (prefs?.applyTo(config) ?: config).copy(weekStart = budget.weekStart)
 
-        val fresh = rules.candidates(input(budget, today), cfg)
+        // Düzenli ödemeler ve ay özeti yalnız bugünün planına: önceden planlanan türler değil.
+        val todayInput = input(budget, today).copy(recurring = recurring(today), monthRecap = monthRecap(budget, today))
+        val fresh = rules.candidates(todayInput, cfg)
         val carried = CARRIED_LEADS.flatMap { lead ->
             rules.candidates(input(budget, today.minusDays(lead)), cfg)
                 .filter { it.type.leadDays == lead && it.date == today }
@@ -67,6 +77,22 @@ class PlanCoachWeek(
         // Kapatılan gruplar günlük sayıya girmeden düşer: yerlerine açık olanlar gelir.
         val allowed = (fresh + carried).filter { prefs?.allows(it.type) ?: true }
         return rules.applyConstraints(allowed, cfg)
+    }
+
+    private suspend fun recurring(today: LocalDate): List<RecurringPayment> =
+        RecurringPayments.find(
+            expenses = expenses.between(RecurringPayments.lookbackStart(today), today),
+            today = today,
+            fixed = fixedExpenses.all(),
+            isIgnored = { key -> dismissals?.isDismissed(key) == true },
+        )
+
+    /** Ufukta ayın ilk günü varsa, ondan önceki ayın özeti (o ayın son gününün gözünden). */
+    private suspend fun monthRecap(budget: BudgetConfig, today: LocalDate): MonthRecap? {
+        val first = (0 until HORIZON_DAYS).map { today.plusDays(it) }.firstOrNull { it.day == 1 } ?: return null
+        val month = first.minus(DatePeriod(months = 1))
+        val list = expenses.between(month.minus(DatePeriod(months = 1)), first.minusDays(1))
+        return MonthRecaps.compute(month, list, deposits = emptyList(), budget = budget, today = first.minusDays(1))
     }
 
     /** [day] gününün gözünden kural girdisi: o güne kadarki harcamalar, o haftanın durumu. */
@@ -161,3 +187,6 @@ class PlanCoachWeek(
         val CARRIED_LEADS: List<Int> = NotificationType.entries.map { it.leadDays }.filter { it > 0 }.distinct()
     }
 }
+
+/** Koç planının ufku (gün); [CoachRules] de 7 gün planlar. */
+private const val HORIZON_DAYS = 7

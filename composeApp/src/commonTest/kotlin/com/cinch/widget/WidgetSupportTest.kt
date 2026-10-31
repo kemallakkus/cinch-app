@@ -5,6 +5,8 @@ import com.cinch.shared.backup.BackupTracker
 import com.cinch.shared.budget.BudgetConfig
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.ObserveBudgetStatus
+import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.FixedExpense
 import com.cinch.shared.domain.Card
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
@@ -95,6 +97,20 @@ class WidgetSupportTest {
         assertNull(save("market"))
         assertEquals(1, expenses.all.value.size) // tutarsız metin kaydedilmez
         assertTrue("tutar bulamadım" in SaveQuickEntry.message("market", null))
+    }
+
+    @Test
+    fun quickEntry_linksToAFixedExpenseByName() = runTest {
+        val expenses = FakeExpenseRepository()
+        val fixed = FakeFixedExpenseRepository()
+        val netflix = fixed.add(FixedExpense(name = "Netflix", amount = tl(199), dayOfMonth = 5, kind = FixedExpenseKind.SUBSCRIPTION))
+        val save = SaveQuickEntry(QuickEntryParser(), expenses, FakeCardRepository(expenses), FakeClock(today), fixedExpenses = fixed)
+
+        val saved = save("199 netflix")
+
+        assertEquals(netflix, saved?.fixedExpenseId)
+        assertEquals(netflix, expenses.all.value.single().fixedExpenseId)
+        assertTrue("ödemesi olarak işaretlendi" in SaveQuickEntry.message("199 netflix", saved))
     }
 
     @Test

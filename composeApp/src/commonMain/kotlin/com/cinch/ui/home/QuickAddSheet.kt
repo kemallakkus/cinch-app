@@ -38,7 +38,7 @@ fun QuickAddSheet(
 
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { effect ->
-            if (effect is HomeEffect.EntrySaved) currentOnSaved()
+            if (effect is HomeEffect.EntrySaved || effect is HomeEffect.FixedPaid) currentOnSaved()
         }
     }
 

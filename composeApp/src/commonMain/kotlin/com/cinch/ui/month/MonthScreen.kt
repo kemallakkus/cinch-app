@@ -96,6 +96,8 @@ fun MonthScreen(
     onOpenSavings: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     confettiTrigger: Int = 0,
+    /** Geçen ayın özeti ve düzenli ödemeler kısayolları (kendi verisini kendisi okur). */
+    insights: @Composable () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -125,6 +127,7 @@ fun MonthScreen(
                     Box(Modifier.coachMarkTarget(CoachMarkSteps.MONTH[1].key)) { CashCalendarTeaser(onOpenCashCalendar) }
                 }
                 item(key = "savings") { SavingsTeaser(summary?.saved, onOpenSavings) }
+                item(key = "insights") { insights() }
 
                 state.breakdown?.takeIf { !it.isEmpty }?.let { breakdown ->
                     item(key = "breakdown") { BreakdownTeaser(breakdown, onClick = onOpenInsights) }

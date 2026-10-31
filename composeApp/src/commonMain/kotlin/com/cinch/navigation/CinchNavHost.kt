@@ -57,6 +57,8 @@ import com.cinch.ui.month.MonthWrapper
 import com.cinch.ui.progress.AchievementsWrapper
 import com.cinch.ui.receipt.ReceiptReviewWrapper
 import com.cinch.ui.savings.SavingsWrapper
+import com.cinch.ui.recap.MonthRecapWrapper
+import com.cinch.ui.subscriptions.SubscriptionsWrapper
 import com.cinch.ui.settings.NotificationSettingsWrapper
 import com.cinch.ui.settings.SettingsWrapper
 import com.cinch.ui.statement.StatementReviewWrapper
@@ -266,6 +268,16 @@ private fun cinchEntries(
             onReceiptRead = { text -> navigate(ReceiptReviewRoute(text)) },
             onOpenCashCalendar = { navigate(CashCalendarRoute) },
             onOpenSavings = { navigate(SavingsRoute) },
+            onOpenRecap = { navigate(MonthRecapRoute()) },
+            onOpenSubscriptions = { navigate(SubscriptionsRoute) },
+        )
+    }
+    entry<SubscriptionsRoute> { SubscriptionsWrapper(onBack = goBack) }
+    entry<MonthRecapRoute> { route ->
+        MonthRecapWrapper(
+            route = route,
+            onBack = goBack,
+            onOpenInsights = { month -> navigate(InsightsRoute(year = month.year, month = month.month.number)) },
         )
     }
     entry<DebtDetailRoute> { route ->

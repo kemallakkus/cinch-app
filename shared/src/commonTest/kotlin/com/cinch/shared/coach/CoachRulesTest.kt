@@ -1,5 +1,7 @@
 package com.cinch.shared.coach
 
+import com.cinch.shared.budget.MonthRecap
+import com.cinch.shared.recurring.RecurringPayments
 import com.cinch.shared.budget.BudgetStatus
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
@@ -250,5 +252,40 @@ class CoachRulesTest {
 
         val over = listOf(Expense(date = LocalDate(2025, 1, 8), grossAmount = t(900)))
         assertFalse(rules.planWeek(CoachInput(today = today, budget = status(), expenses = over), CoachConfig()).any { it.type == NotificationType.WEEK_LEFTOVER })
+    }
+
+    @Test
+    fun recurring_foundOnceAfterTheThirdMonth_andPriceIncrease() {
+        fun netflix(month: Int, amount: Long) = Expense(
+            date = LocalDate(2024, month, 12), grossAmount = t(amount), tokens = listOf("netflix"), rawText = "$amount netflix",
+        )
+        val found = RecurringPayments.find(listOf(netflix(10, 199), netflix(11, 199), netflix(12, 199)), LocalDate(2024, 12, 12))
+        val plan = rules.planWeek(CoachInput(today = LocalDate(2024, 12, 12), budget = status(), recurring = found), CoachConfig())
+        val notice = plan.single { it.type == NotificationType.RECURRING_FOUND }
+        assertEquals(LocalDate(2024, 12, 13), notice.date)
+        assertTrue("Netflix" in notice.message, notice.message)
+
+        val raised = RecurringPayments.find(
+            listOf(netflix(9, 199), netflix(10, 199), netflix(11, 199), netflix(12, 229)), LocalDate(2024, 12, 12),
+        )
+        val zam = rules.planWeek(CoachInput(today = LocalDate(2024, 12, 12), budget = status(), recurring = raised), CoachConfig())
+            .single { it.type == NotificationType.PRICE_CHANGE }
+        assertTrue("+%15" in zam.message, zam.message) // 199 → 229
+        assertFalse(rules.planWeek(CoachInput(today = LocalDate(2024, 12, 12), budget = status(), recurring = raised), CoachConfig()).any { it.type == NotificationType.RECURRING_FOUND }) // 4. ay: zaten biliniyor
+    }
+
+    @Test
+    fun monthRecap_onTheFirstOfTheMonth() {
+        val recap = MonthRecap(
+            month = LocalDate(2025, 1, 1), spent = t(9_200), previousSpent = t(10_000), topCategory = null, topWord = null,
+            daysOnTrack = 20, daysCounted = 31, fixedPaid = t(0), saved = t(0), entries = 40,
+        )
+        // Pazartesi 13 Ocak'tan 7 gün içinde ayın ilk günü yok.
+        assertTrue(rules.planWeek(CoachInput(today = today, budget = status(), monthRecap = recap), CoachConfig()).none { it.type == NotificationType.MONTH_RECAP })
+
+        val feb = rules.planWeek(CoachInput(today = LocalDate(2025, 1, 29), budget = status(), monthRecap = recap), CoachConfig())
+            .single { it.type == NotificationType.MONTH_RECAP }
+        assertEquals(LocalDate(2025, 2, 1), feb.date)
+        assertTrue("Ocak" in feb.message && "%8 az" in feb.message, feb.message)
     }
 }

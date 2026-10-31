@@ -18,6 +18,8 @@ object DeepLinks {
     const val SAVINGS = "cinch://savings"
     const val ACHIEVEMENTS = "cinch://achievements"
     const val INSIGHTS = "cinch://insights"
+    const val SUBSCRIPTIONS = "cinch://subscriptions"
+    const val RECAP = "cinch://recap"
 
     private val _pending = MutableStateFlow<String?>(null)
     val pending: StateFlow<String?> = _pending.asStateFlow()
@@ -43,5 +45,7 @@ fun linkTarget(url: String): LinkTarget? = when (url) {
     DeepLinks.SAVINGS -> LinkTarget(TopTab.TODAY, SavingsRoute)
     DeepLinks.ACHIEVEMENTS -> LinkTarget(TopTab.TODAY, AchievementsRoute)
     DeepLinks.INSIGHTS -> LinkTarget(TopTab.MONTH, InsightsRoute())
+    DeepLinks.SUBSCRIPTIONS -> LinkTarget(TopTab.MONTH, SubscriptionsRoute)
+    DeepLinks.RECAP -> LinkTarget(TopTab.MONTH, MonthRecapRoute())
     else -> null
 }

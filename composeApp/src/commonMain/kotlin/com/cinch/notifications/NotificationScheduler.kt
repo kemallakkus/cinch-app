@@ -35,6 +35,8 @@ val NotificationType.link: String
         NotificationType.SALARY, NotificationType.FIXED_DUE, NotificationType.FIXED_UNPAID -> DeepLinks.MONTH
         NotificationType.BACKUP_REMINDER -> DeepLinks.SETTINGS
         NotificationType.WEEK_LEFTOVER -> DeepLinks.SAVINGS
+        NotificationType.RECURRING_FOUND, NotificationType.PRICE_CHANGE -> DeepLinks.SUBSCRIPTIONS
+        NotificationType.MONTH_RECAP -> DeepLinks.RECAP
     }
 
 /** Bildirim başlığı; gövde [CoachNotification.message]. */
@@ -54,4 +56,7 @@ val NotificationType.title: String
         NotificationType.CARD_DUE -> "Kart son ödeme"
         NotificationType.BACKUP_REMINDER -> "Yedek"
         NotificationType.WEEK_LEFTOVER -> "Kumbara"
+        NotificationType.RECURRING_FOUND -> "Düzenli ödeme"
+        NotificationType.PRICE_CHANGE -> "Zam"
+        NotificationType.MONTH_RECAP -> "Ay özeti"
     }

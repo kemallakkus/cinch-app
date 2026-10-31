@@ -1,5 +1,8 @@
 package com.cinch.ui.home
 
+import com.cinch.shared.domain.FixedExpenseKind
+import com.cinch.shared.domain.FixedExpense
+import com.cinch.ui.FakeFixedExpenseRepository
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshots.Snapshot
 import com.cinch.shared.budget.BudgetConfig
@@ -47,6 +50,7 @@ class HomeViewModelTest {
         val expenses: FakeExpenseRepository,
         val cards: FakeCardRepository,
         val today: FakeClock,
+        val fixed: FakeFixedExpenseRepository,
     ) {
         val state get() = vm.state.value
     }
@@ -61,6 +65,7 @@ class HomeViewModelTest {
             val expenses = FakeExpenseRepository()
             val cards = FakeCardRepository(expenses)
             val clock = FakeClock(today)
+            val fixed = FakeFixedExpenseRepository()
             val categorizer = Categorizer(corrections = InMemoryCorrectionStore())
             val vm = HomeViewModel(
                 budgets = budgets,
@@ -71,10 +76,11 @@ class HomeViewModelTest {
                 categorizer = categorizer,
                 clock = clock,
                 ioDispatcher = StandardTestDispatcher(testScheduler),
+                fixedExpenses = fixed,
             )
             backgroundScope.launch { vm.state.collect {} }
             runCurrent()
-            block(Fixture(vm, budgets, expenses, cards, clock))
+            block(Fixture(vm, budgets, expenses, cards, clock, fixed))
             vm.viewModelScope.cancel()
         }
     }
@@ -325,5 +331,32 @@ class HomeViewModelTest {
         f.vm.onEvent(HomeEvent.DatePicked(LocalDate(2025, 2, 1)))
         runCurrent()
         assertEquals(monday, f.state.entryDate)
+    }
+
+    @Test
+    fun typingAFixedExpensesName_marksItPaid_andUndoMakesItAnExpense() = testVm { f ->
+        val rentId = f.fixed.add(FixedExpense(name = "Ev kirası", amount = tl(15_000), dayOfMonth = 1, kind = FixedExpenseKind.RENT))
+        val effects = mutableListOf<HomeEffect>()
+        backgroundScope.launch { f.vm.effect.collect { effects += it } }
+
+        type(f, "15000 kira")
+        save(f)
+
+        val payment = f.expenses.all.value.single()
+        assertEquals(rentId, payment.fixedExpenseId) // ay hesabında iki kez düşmez
+        assertEquals(tl(15_000), payment.grossAmount)
+        val linked = effects.filterIsInstance<HomeEffect.FixedPaid>().single()
+        assertEquals("Ev kirası", linked.name)
+        assertTrue(f.state.weekExpenses.isEmpty()) // haftalık listede yalnız serbest harcamalar
+
+        // Aynı ay ikinci kez: artık eşleşmez, serbest harcama olur.
+        type(f, "200 kira depozito farkı")
+        save(f)
+        assertEquals(1, f.expenses.all.value.count { it.fixedExpenseId == rentId })
+
+        f.vm.onEvent(HomeEvent.UndoFixedLink(linked.paymentId, linked.original))
+        runCurrent()
+        assertTrue(f.expenses.all.value.none { it.fixedExpenseId == rentId })
+        assertEquals(tl(15_000), f.expenses.all.value.first { it.rawText == "15000 kira" }.grossAmount)
     }
 }

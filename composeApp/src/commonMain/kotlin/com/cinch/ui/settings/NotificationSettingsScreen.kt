@@ -168,9 +168,9 @@ val NotificationGroup.title: String
         NotificationGroup.DAILY_SHARE -> "Günün payı"
         NotificationGroup.LOG_REMINDER -> "Kayıt hatırlatması"
         NotificationGroup.LIMIT_WARNINGS -> "Sınır uyarıları"
-        NotificationGroup.WEEKLY -> "Haftalık kapanış ve kumbara"
+        NotificationGroup.WEEKLY -> "Hafta ve ay özetleri, kumbara"
         NotificationGroup.HABITS -> "Seri ve alışkanlıklar"
-        NotificationGroup.PAYMENTS -> "Ödeme günleri"
+        NotificationGroup.PAYMENTS -> "Ödemeler ve abonelikler"
         NotificationGroup.SALARY -> "Maaş günü"
         NotificationGroup.BACKUP -> "Yedek hatırlatması"
     }
@@ -180,9 +180,9 @@ val NotificationGroup.description: String
         NotificationGroup.DAILY_SHARE -> "Her gün bugün ne kadar harcayabileceğin"
         NotificationGroup.LOG_REMINDER -> "Bir gün hiç harcama girmediysen ertesi gün; bildirimden yazıp kaydedebilirsin"
         NotificationGroup.LIMIT_WARNINGS -> "Haftalık sınıra yaklaşınca, bir kategoride geçen haftadan fazla gidince"
-        NotificationGroup.WEEKLY -> "Hafta sonunda özet, yeni haftada artanı kumbaraya atma"
+        NotificationGroup.WEEKLY -> "Hafta sonunda özet, ayın ilk günü geçen ayın özeti, artanı kumbaraya atma"
         NotificationGroup.HABITS -> "Serin uzayınca, sık tekrarlanan harcamalarda"
-        NotificationGroup.PAYMENTS -> "Sabit giderler, kart son ödemesi, ekstre günü"
+        NotificationGroup.PAYMENTS -> "Sabit giderler, kart son ödemesi, ekstre günü; bulunan abonelikler ve zamlar"
         NotificationGroup.SALARY -> "Maaş yatınca ayı gözden geçirme"
         NotificationGroup.BACKUP -> "Uzun süredir yedek almadıysan"
     }

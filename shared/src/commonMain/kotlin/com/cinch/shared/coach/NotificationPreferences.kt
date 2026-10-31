@@ -14,9 +14,14 @@ enum class NotificationGroup(val types: Set<NotificationType>) {
     DAILY_SHARE(setOf(NotificationType.MIDDAY_REMAINING)),
     LOG_REMINDER(setOf(NotificationType.FORGOT_LOG)),
     LIMIT_WARNINGS(setOf(NotificationType.APPROACHING_LIMIT, NotificationType.CATEGORY_SPIKE)),
-    WEEKLY(setOf(NotificationType.WEEKLY_CLOSING, NotificationType.WEEK_LEFTOVER)),
+    WEEKLY(setOf(NotificationType.WEEKLY_CLOSING, NotificationType.WEEK_LEFTOVER, NotificationType.MONTH_RECAP)),
     HABITS(setOf(NotificationType.STREAK, NotificationType.HABIT_ALERT)),
-    PAYMENTS(setOf(NotificationType.FIXED_DUE, NotificationType.FIXED_UNPAID, NotificationType.CARD_DUE, NotificationType.STATEMENT_DUE)),
+    PAYMENTS(
+        setOf(
+            NotificationType.FIXED_DUE, NotificationType.FIXED_UNPAID, NotificationType.CARD_DUE, NotificationType.STATEMENT_DUE,
+            NotificationType.RECURRING_FOUND, NotificationType.PRICE_CHANGE,
+        ),
+    ),
     SALARY(setOf(NotificationType.SALARY)),
     BACKUP(setOf(NotificationType.BACKUP_REMINDER)),
     ;

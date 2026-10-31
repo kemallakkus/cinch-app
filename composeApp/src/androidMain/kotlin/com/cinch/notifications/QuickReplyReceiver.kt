@@ -30,7 +30,7 @@ class QuickReplyReceiver : BroadcastReceiver() {
             try {
                 val clock = koin.get<LocalClock>()
                 val fallback = if (type == NotificationType.FORGOT_LOG) clock.today().minus(DatePeriod(days = 1)) else null
-                val saved = if (text.isEmpty()) null else SaveQuickEntry(koin.get(), koin.get(), koin.get(), clock).invoke(text, fallback)
+                val saved = if (text.isEmpty()) null else SaveQuickEntry(koin.get(), koin.get(), koin.get(), clock, fixedExpenses = koin.get()).invoke(text, fallback)
                 CoachNotifier.showReplyResult(app, type, SaveQuickEntry.message(text, saved), saved = saved != null)
             } finally {
                 pending.finish()

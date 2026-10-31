@@ -51,6 +51,17 @@ fun HomeWrapper(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is HomeEffect.EntrySaved -> if (effect.onTrack) confetti++
+                is HomeEffect.FixedPaid -> launch {
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    val result = snackbarHostState.showSnackbar(
+                        message = "${effect.name} bu ayın ödemesi olarak işaretlendi",
+                        actionLabel = "Geri al",
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.onEvent(HomeEvent.UndoFixedLink(effect.paymentId, effect.original))
+                    }
+                }
                 is HomeEffect.ExpenseDeleted -> launch {
                     // Art arda silmede eski snackbar beklemesin; son silinen geri alınabilir.
                     snackbarHostState.currentSnackbarData?.dismiss()

@@ -1,5 +1,8 @@
 package com.cinch.shared.di
 
+import com.cinch.shared.budget.ObserveMonthRecap
+import com.cinch.shared.recurring.ObserveRecurringPayments
+import com.cinch.shared.recurring.RecurringDismissals
 import com.cinch.shared.cards.ObserveCardOverviews
 import com.cinch.shared.coach.NotificationPreferencesStore
 import com.cinch.shared.backup.BackupTracker
@@ -106,8 +109,10 @@ class DomainModule {
         engine: BudgetEngine,
         rules: CoachRules,
         preferences: NotificationPreferencesStore,
+        dismissals: RecurringDismissals,
     ): PlanCoachWeek = PlanCoachWeek(
-        budgets, expenses, cards, incomes, fixedExpenses, statements, backups, engine, rules, preferences = preferences,
+        budgets, expenses, cards, incomes, fixedExpenses, statements, backups, engine, rules,
+        preferences = preferences, dismissals = dismissals,
     )
 
     @Factory
@@ -117,6 +122,26 @@ class DomainModule {
         statements: CardStatementRepository,
         clock: LocalClock,
     ): ObserveCardOverviews = ObserveCardOverviews(cards, expenses, statements, clock)
+
+    /** "Abonelik değil" denen tekrarlar; ekran ve koç aynı kaydı görsün diye tek. */
+    @Single
+    fun recurringDismissals(prefs: KeyValueStore): RecurringDismissals = RecurringDismissals(prefs)
+
+    @Factory
+    fun observeRecurringPayments(
+        expenses: ExpenseRepository,
+        fixedExpenses: FixedExpenseRepository,
+        dismissals: RecurringDismissals,
+        clock: LocalClock,
+    ): ObserveRecurringPayments = ObserveRecurringPayments(expenses, fixedExpenses, dismissals, clock)
+
+    @Factory
+    fun observeMonthRecap(
+        budgets: BudgetRepository,
+        expenses: ExpenseRepository,
+        savings: SavingsRepository,
+        clock: LocalClock,
+    ): ObserveMonthRecap = ObserveMonthRecap(budgets, expenses, savings, clock)
 
     @Single
     fun notificationPreferences(prefs: KeyValueStore): NotificationPreferencesStore = NotificationPreferencesStore(prefs)

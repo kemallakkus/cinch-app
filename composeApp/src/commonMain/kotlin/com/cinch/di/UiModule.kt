@@ -1,5 +1,12 @@
 package com.cinch.di
 
+import com.cinch.navigation.MonthRecapRoute
+import com.cinch.ui.month.MonthInsightsViewModel
+import com.cinch.ui.recap.MonthRecapViewModel
+import com.cinch.ui.subscriptions.SubscriptionsViewModel
+import com.cinch.shared.budget.ObserveMonthRecap
+import com.cinch.shared.recurring.RecurringDismissals
+import com.cinch.shared.recurring.ObserveRecurringPayments
 import com.cinch.navigation.BudgetSetupRoute
 import com.cinch.navigation.CardDetailRoute
 import com.cinch.navigation.CardEditRoute
@@ -80,6 +87,23 @@ class UiModule {
 
     /** Ekran tanıtım balonlarının "görüldü" kaydı; Ayarlar'dan sıfırlanınca açık ekranlar da duysun diye tek. */
     @KoinViewModel
+    fun subscriptionsViewModel(
+        observe: ObserveRecurringPayments,
+        fixedExpenses: FixedExpenseRepository,
+        expenses: ExpenseRepository,
+        dismissals: RecurringDismissals,
+        clock: LocalClock,
+    ): SubscriptionsViewModel = SubscriptionsViewModel(observe, fixedExpenses, expenses, dismissals, clock)
+
+    @KoinViewModel
+    fun monthRecapViewModel(@InjectedParam route: MonthRecapRoute, observe: ObserveMonthRecap, clock: LocalClock): MonthRecapViewModel =
+        MonthRecapViewModel(route, observe, clock)
+
+    @KoinViewModel
+    fun monthInsightsViewModel(recaps: ObserveMonthRecap, recurring: ObserveRecurringPayments, clock: LocalClock): MonthInsightsViewModel =
+        MonthInsightsViewModel(recaps, recurring, clock)
+
+    @KoinViewModel
     fun notificationSettingsViewModel(store: NotificationPreferencesStore): NotificationSettingsViewModel =
         NotificationSettingsViewModel(store)
 
@@ -105,6 +129,7 @@ class UiModule {
         categorizer: Categorizer,
         clock: LocalClock,
         @Named("ioDispatcher") ioDispatcher: CoroutineDispatcher,
+        fixedExpenses: FixedExpenseRepository,
     ): HomeViewModel = HomeViewModel(
         budgets = budgets,
         expenses = expenses,
@@ -114,6 +139,7 @@ class UiModule {
         categorizer = categorizer,
         clock = clock,
         ioDispatcher = ioDispatcher,
+        fixedExpenses = fixedExpenses,
     )
 
     @KoinViewModel

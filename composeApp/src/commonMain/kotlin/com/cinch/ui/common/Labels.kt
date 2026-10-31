@@ -94,6 +94,9 @@ val DayOfWeek.initial: String get() = longLabel.take(1)
 /** "Ekim 2026". */
 fun LocalDate.monthYearLabel(): String = "${longMonths[month.ordinal]} $year"
 
+/** Yalnız ayın adı: "Ekim". */
+fun LocalDate.monthName(): String = longMonths[month.ordinal]
+
 val FixedExpenseKind.label: String
     get() = when (this) {
         FixedExpenseKind.RENT -> "Kira"

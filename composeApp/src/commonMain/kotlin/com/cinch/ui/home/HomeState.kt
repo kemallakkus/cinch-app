@@ -82,6 +82,9 @@ data class DaySpend(
 data class CardSelection(val cardId: Long?)
 
 sealed interface HomeEvent {
+    /** Sabit gidere bağlanan kaydı geri al: ödeme silinir, kayıt serbest harcama olur. */
+    data class UndoFixedLink(val paymentId: Long, val original: Expense) : HomeEvent
+
     /** Ekran öne geldi: gece yarısı geçtiyse "bugün" yenilenir. */
     data object Resumed : HomeEvent
     data class CategoryPicked(val category: Category) : HomeEvent
@@ -98,4 +101,10 @@ sealed interface HomeEffect {
 
     /** Snackbar'da "Geri al" sunulur. */
     data class ExpenseDeleted(val expense: Expense) : HomeEffect
+
+    /**
+     * Yazılan kayıt bir sabit giderin bu ayki ödemesi sayıldı ("15000 kira" → kira ödendi). Snackbar'da "Geri al":
+     * [original] serbest harcama olarak kaydedilir, [paymentId] silinir.
+     */
+    data class FixedPaid(val name: String, val paymentId: Long, val original: Expense) : HomeEffect
 }

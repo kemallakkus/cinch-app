@@ -4,6 +4,10 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cinch.shared.domain.repository.FixedExpenseRepository
+import com.cinch.shared.domain.FixedExpense
+import com.cinch.shared.budget.FixedPayments
+import com.cinch.shared.budget.FixedMatcher
 import com.cinch.shared.budget.BudgetEngine
 import com.cinch.shared.budget.ObserveBudgetStatus
 import com.cinch.shared.category.Categorizer
@@ -51,6 +55,8 @@ class HomeViewModel(
     private val categorizer: Categorizer,
     private val clock: LocalClock,
     private val ioDispatcher: CoroutineDispatcher,
+    /** Verilirse adı yazılan sabit gider ("15000 kira") o ayın ödemesi sayılır; ay hesabında iki kez düşmesin. */
+    private val fixedExpenses: FixedExpenseRepository? = null,
 ) : ViewModel() {
 
     private val today = MutableStateFlow(clock.today())
@@ -116,6 +122,10 @@ class HomeViewModel(
             HomeEvent.SaveEntry -> saveEntry()
             is HomeEvent.DeleteExpense -> delete(event.expense)
             is HomeEvent.UndoDelete -> viewModelScope.launch { expenses.add(event.expense.copy(id = 0)) }
+            is HomeEvent.UndoFixedLink -> viewModelScope.launch {
+                expenses.delete(event.paymentId)
+                expenses.add(event.original.copy(id = 0))
+            }
         }
     }
 
@@ -138,15 +148,30 @@ class HomeViewModel(
                     withContext(ioDispatcher) { categorizer.learnFromCorrection(parsed.tokens, category) }
                 }
                 val saved = expense.copy(category = category, date = current.dateOverride ?: expense.date)
-                // Kayıttan önce bakılır: sonra bakılsa durum çoktan güncellenmiş olabilir, harcama iki kez düşülürdü.
-                val onTrack = staysOnTrack(saved)
-                expenses.add(saved)
-                _effect.send(HomeEffect.EntrySaved(onTrack))
+                val fixed = matchingFixed(parsed.tokens, saved)
+                if (fixed != null) {
+                    // Kart yazıldıysa o kart, yoksa sabit giderin kartı.
+                    val paymentId = FixedPayments(expenses).markPaid(fixed.copy(cardId = saved.cardId ?: fixed.cardId), saved.grossAmount, saved.date)
+                    _effect.send(HomeEffect.FixedPaid(fixed.name, paymentId, saved))
+                } else {
+                    // Kayıttan önce bakılır: sonra bakılsa durum çoktan güncellenmiş olabilir, harcama iki kez düşülürdü.
+                    val onTrack = staysOnTrack(saved)
+                    expenses.add(saved)
+                    _effect.send(HomeEffect.EntrySaved(onTrack))
+                }
                 current.entry.clearText()
                 _state.update { it.copy(categoryOverride = null, cardOverride = null, dateOverride = null) }
             } finally {
                 _state.update { it.copy(isSaving = false) }
             }
+        }
+    }
+
+    /** Adı metinde geçen, o ay ödenmemiş tek sabit gider ([FixedMatcher]); yoksa null. */
+    private suspend fun matchingFixed(tokens: List<String>, expense: Expense): FixedExpense? {
+        val repo = fixedExpenses ?: return null
+        return withContext(ioDispatcher) {
+            FixedMatcher.match(tokens, repo.all(), expenses.fixedPayments(), expense.date, expense.grossAmount.currency)
         }
     }
 

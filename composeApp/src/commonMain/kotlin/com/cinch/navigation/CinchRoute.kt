@@ -95,6 +95,14 @@ data object SavingsRoute : CinchRoute
 @Serializable
 data object CashCalendarRoute : CinchRoute
 
+/** Kendiliğinden bulunan düzenli ödemeler (abonelikler). */
+@Serializable
+data object SubscriptionsRoute : CinchRoute
+
+/** Ay özeti. [year]/[month] null = geçen ay. */
+@Serializable
+data class MonthRecapRoute(val year: Int? = null, val month: Int? = null) : CinchRoute
+
 /** "Nereye gitti?": ayın kategori dağılımı ve geçen ayla kıyas. [year]/[month] null = bu ay. */
 @Serializable
 data class InsightsRoute(val year: Int? = null, val month: Int? = null) : CinchRoute

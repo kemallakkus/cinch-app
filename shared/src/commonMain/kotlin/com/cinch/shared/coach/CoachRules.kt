@@ -1,5 +1,11 @@
 package com.cinch.shared.coach
 
+import kotlin.math.abs
+import kotlinx.datetime.plus
+import kotlinx.datetime.DatePeriod
+import com.cinch.shared.budget.MonthRecap
+import com.cinch.shared.recurring.RecurringPayments
+import com.cinch.shared.recurring.RecurringPayment
 import com.cinch.shared.budget.BudgetStatus
 import com.cinch.shared.domain.Category
 import com.cinch.shared.domain.Expense
@@ -14,6 +20,11 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.isoDayNumber
 import kotlin.math.roundToInt
+
+private val MONTHS_TR = listOf("Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık")
+private val MONTHS_EN = listOf(
+    "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
+)
 
 /** Koçluk bildirimi türü. */
 enum class NotificationType {
@@ -31,6 +42,9 @@ enum class NotificationType {
     CARD_DUE,           // kredi kartı son ödeme günü yaklaşıyor (banka ekranından okunan)
     BACKUP_REMINDER,    // uzun süredir yedek alınmadı
     WEEK_LEFTOVER,      // geçen hafta sınırın altında kalındı: artanı kumbaraya at
+    RECURRING_FOUND,    // 3 aydır her ay aynı ödeme yazılıyor: sabit gidere çevir
+    PRICE_CHANGE,       // düzenli ödemeye zam geldi
+    MONTH_RECAP,        // ayın ilk günü: geçen ayın özeti
 }
 
 /**
@@ -86,6 +100,10 @@ data class CoachInput(
     val cardDues: List<CardDue> = emptyList(),
     /** Son yedek günü; hiç alınmadıysa null. */
     val lastBackup: LocalDate? = null,
+    /** Kendiliğinden bulunan düzenli ödemeler ("abonelik değil" denenler ve sabit gider olanlar hariç). */
+    val recurring: List<RecurringPayment> = emptyList(),
+    /** Ufuktaki ayın ilk gününden önceki ayın özeti; ufukta ayın ilk günü yoksa null. */
+    val monthRecap: MonthRecap? = null,
 )
 
 /**
@@ -127,6 +145,9 @@ class CoachRules(private val horizonDays: Int = 7) {
             addAll(cardDue(input, config))
             addAll(backupReminder(input, config))
             addAll(weekLeftover(input, config))
+            addAll(recurringFound(input, config))
+            addAll(priceChange(input, config))
+            addAll(monthRecap(input, config))
         }
 
     private fun horizon(today: LocalDate): List<LocalDate> =
@@ -418,6 +439,68 @@ class CoachRules(private val horizonDays: Int = 7) {
      * Haftanın ilk günü 10:30: geçen hafta kayıt tutulmuş ve sınırın altında kalınmışsa artanı kumbaraya atmayı önerir.
      * Yalnız o gün üretilir (gösterim anında yeniden hesaplanır).
      */
+    /** Üçüncü ay da yazılınca, ertesi gün bir kez: "sabit giderlere ekleyelim mi?" */
+    private fun recurringFound(input: CoachInput, config: CoachConfig): List<CoachNotification> =
+        input.recurring.filter { it.months == RecurringPayments.MIN_MONTHS }.mapNotNull { r ->
+            val date = r.lastDate.plusDays(1)
+            if (date < input.today) return@mapNotNull null
+            val amount = MoneyFormatter.format(r.lastAmount, config.locale)
+            val msg = when (config.locale) {
+                AppLocale.TR -> "${r.name} için 3 aydır her ay ödeme yazıyorsun ($amount). Sabit giderlere ekleyelim mi? " +
+                    "Ödeme gününden önce hatırlatırız."
+                AppLocale.EN -> "You've logged ${r.name} every month for 3 months ($amount). Add it as a fixed expense?"
+            }
+            CoachNotification(date, LocalTime(11, 30), NotificationType.RECURRING_FOUND, 55, msg)
+        }
+
+    /** Düzenli ödemenin son tutarı öncekinden belirgin yüksekse ertesi gün: zamlandı, hâlâ değiyor mu? */
+    private fun priceChange(input: CoachInput, config: CoachConfig): List<CoachNotification> =
+        input.recurring.mapNotNull { r ->
+            val change = r.priceChange?.takeIf { !it.isNegative } ?: return@mapNotNull null
+            val previous = r.previousAmount ?: return@mapNotNull null
+            val date = r.lastDate.plusDays(1)
+            if (date < input.today) return@mapNotNull null
+            val before = MoneyFormatter.format(previous, config.locale)
+            val now = MoneyFormatter.format(r.lastAmount, config.locale)
+            val percent = (change.minor * 100 / previous.minor.coerceAtLeast(1)).toInt()
+            val msg = when (config.locale) {
+                AppLocale.TR -> "${r.name} zamlandı: $before → $now (+%$percent). Hâlâ değiyor mu?"
+                AppLocale.EN -> "${r.name} went up: $before → $now (+$percent%). Still worth it?"
+            }
+            CoachNotification(date, LocalTime(11, 0), NotificationType.PRICE_CHANGE, 70, msg)
+        }
+
+    /** Ayın ilk günü 10:00: geçen ay ne kadar harcandı, öncekine göre. */
+    private fun monthRecap(input: CoachInput, config: CoachConfig): List<CoachNotification> {
+        val recap = input.monthRecap?.takeIf { !it.isEmpty } ?: return emptyList()
+        val date = recap.month.plus(DatePeriod(months = 1))
+        if (date !in horizon(input.today)) return emptyList()
+        val spent = MoneyFormatter.format(recap.spent, config.locale)
+        val change = recap.change
+        val percent = change?.let { (abs(it) * 100).roundToInt() }
+        val msg = when (config.locale) {
+            AppLocale.TR -> {
+                val versus = when {
+                    change == null -> "ilk ayın 🎉"
+                    percent == 0 -> "geçen ayla aynı"
+                    change < 0 -> "geçen aydan %$percent az 👏"
+                    else -> "geçen aydan %$percent fazla"
+                }
+                "${MONTHS_TR[recap.month.month.ordinal]} özetin hazır: $spent harcadın, $versus. Nereye gittiğine bak."
+            }
+            AppLocale.EN -> {
+                val versus = when {
+                    change == null -> "your first month 🎉"
+                    percent == 0 -> "same as the month before"
+                    change < 0 -> "$percent% less than the month before 👏"
+                    else -> "$percent% more than the month before"
+                }
+                "Your ${MONTHS_EN[recap.month.month.ordinal]} recap is ready: you spent $spent, $versus."
+            }
+        }
+        return listOf(CoachNotification(date, LocalTime(10, 0), NotificationType.MONTH_RECAP, 65, msg))
+    }
+
     private fun weekLeftover(input: CoachInput, config: CoachConfig): List<CoachNotification> {
         val weekStart = input.budget.weekStart
         if (input.today != weekStart) return emptyList()

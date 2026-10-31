@@ -27,6 +27,8 @@ fun MonthWrapper(
     onReceiptRead: (String) -> Unit,
     onOpenCashCalendar: () -> Unit,
     onOpenSavings: () -> Unit,
+    onOpenRecap: () -> Unit,
+    onOpenSubscriptions: () -> Unit,
     viewModel: MonthViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -64,6 +66,7 @@ fun MonthWrapper(
             onOpenSavings = onOpenSavings,
             snackbarHostState = snackbarHostState,
             confettiTrigger = confetti,
+            insights = { MonthInsightsWrapper(onOpenRecap = onOpenRecap, onOpenSubscriptions = onOpenSubscriptions) },
         )
     }
     ReceiptReadingDialog(receipt)
